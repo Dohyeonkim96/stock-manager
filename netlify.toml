@@ -1,0 +1,6 @@
+# Netlify 설정 파일
+
+[[redirects]]
+  from = "/"
+  to = "/main.html"
+  status = 200
