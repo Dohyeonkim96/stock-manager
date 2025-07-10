@@ -1,11 +1,6 @@
 const Airtable = require('airtable');
 const base = new Airtable({ apiKey: process.env.AIRTABLE_API_KEY }).base(process.env.AIRTABLE_BASE_ID);
-
-// 쉼표가 포함된 숫자 문자열을 실제 숫자로 변환하는 헬퍼 함수
-const parseNumber = (str) => {
-  if (!str) return 0;
-  return Number(String(str).replace(/,/g, ''));
-};
+const parseNumber = (str) => Number(String(str || '0').replace(/,/g, ''));
 
 exports.handler = async function(event, context) {
   try {
@@ -13,58 +8,36 @@ exports.handler = async function(event, context) {
     const stockRecords = await base('재고조회').select().all();
 
     const itemsByCode = {};
-    itemRecords.forEach(record => {
-      const itemCode = record.fields['품목코드'];
-      if (itemCode) {
-        itemsByCode[itemCode] = {
-          itemName: record.fields['제품명'],
-          classification: record.fields['분류'] || '미분류',
-          remarks: record.fields['비고']
+    itemRecords.forEach(r => {
+      const code = r.fields['품목코드'];
+      if (code) {
+        itemsByCode[code] = {
+          itemName: r.fields['제품명'],
+          classification: r.fields['분류'] || '미분류'
         };
       }
     });
 
     const inventory = {};
-    stockRecords.forEach(record => {
-      const itemCode = record.fields['품목코드'];
-      if (!itemCode) return;
-
-      if (!inventory[itemCode]) {
-        const itemInfo = itemsByCode[itemCode] || {};
-        inventory[itemCode] = {
-          itemCode: itemCode,
-          itemName: itemInfo.itemName || record.fields['제품명'] || '품명 정보 없음',
-          classification: itemInfo.classification,
-          remarks: itemInfo.remarks || record.fields['비고'] || '',
+    stockRecords.forEach(r => {
+      const code = r.fields['품목코드'];
+      if (!code) return;
+      if (!inventory[code]) {
+        inventory[code] = {
+          itemCode: code,
+          itemName: itemsByCode[code]?.itemName || r.fields['제품명'],
+          classification: itemsByCode[code]?.classification || '미분류',
           totalQuantity: 0,
           lots: []
         };
       }
-      
-      const quantity = parseNumber(record.fields['수량']);
-      inventory[itemCode].totalQuantity += quantity;
-      
-      inventory[itemCode].lots.push({
-        airtableRecordId: record.id,
-        lot: record.fields['LOT'],
-        quantity: quantity,
-        mfgDate: record.fields['제조일자'],
-        expDate: record.fields['유통기한'],
-        palletQty: parseNumber(record.fields['파렛트수량']),
-        remarks: record.fields['비고']
-      });
+      const qty = parseNumber(r.fields['수량']);
+      inventory[code].totalQuantity += qty;
+      inventory[code].lots.push({ airtableRecordId: r.id, lot: r.fields.LOT, quantity: qty });
     });
     
-    return {
-      statusCode: 200,
-      body: JSON.stringify(Object.values(inventory)),
-    };
-
+    return { statusCode: 200, body: JSON.stringify(Object.values(inventory)) };
   } catch (error) {
-    console.error("Function failed:", error);
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ message: error.message }),
-    };
+    return { statusCode: 500, body: JSON.stringify({ message: error.message }) };
   }
 };
