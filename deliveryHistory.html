@@ -1,46 +1,109 @@
-const Airtable = require('airtable');
-const base = new Airtable({ apiKey: process.env.AIRTABLE_API_KEY }).base(process.env.AIRTABLE_BASE_ID);
-const parseNumber = (str) => Number(String(str || '0').replace(/,/g, ''));
+<style>
+  .filter-controls { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end; margin-bottom: 24px; padding: 16px; background-color: #fdfdfe; border: 1px solid var(--border-color); border-radius: 0.375rem; }
+  .data-table { width: 100%; border-collapse: collapse; font-size: var(--font-size-sm); }
+  .data-table th, .data-table td { border: 1px solid var(--border-color); padding: 8px; text-align: center; }
+  .data-table tfoot { font-weight: bold; }
+  .data-table .clickable-quantity { color: var(--primary-color); text-decoration: underline; cursor: pointer; font-weight: bold; }
+  .modal-content { max-width: 800px; }
+</style>
 
-exports.handler = async function(event, context) {
-  const { year, month, itemCode } = event.queryStringParameters;
+<div class="section-card">
+  <h1 class="page-main-title">납품 이력 조회</h1>
+  <div id="messageArea" class="message"></div>
+  <div class="filter-controls">
+    <div class="form-group" style="margin-bottom:0;"><label for="year-filter">년도</label><select id="year-filter"></select></div>
+    <div class="form-group" style="margin-bottom:0;"><label for="month-filter">월</label><select id="month-filter"></select></div>
+    <div class="form-group" style="margin-bottom:0;"><label for="item-code-filter">품목코드</label><input type="text" id="item-code-filter" class="editable" placeholder="품목코드로 검색"></div>
+    <button onclick="searchHistory()" class="button-primary">조회 <span id="loading" class="loading-spinner"></span></button>
+  </div>
+  <div style="overflow-x: auto;">
+    <table class="data-table">
+      <thead><tr><th>품목코드</th><th style="min-width: 200px; text-align:left;">품명</th><th>총 납품수량</th></tr></thead>
+      <tbody id="history-tbody"></tbody>
+      <tfoot id="history-tfoot"></tfoot>
+    </table>
+  </div>
+</div>
+<div id="lot-detail-modal" class="modal">
+  <div class="modal-content">
+      <h2 id="modal-title">상세 내역</h2>
+      <div style="overflow-x: auto;">
+        <table class="data-table">
+          <thead><tr><th>납품일자</th><th>LOT</th><th>납품수량</th></tr></thead>
+          <tbody id="lot-detail-tbody"></tbody>
+        </table>
+      </div>
+  </div>
+</div>
 
-  // 필터 공식 생성
-  let filterParts = [];
-  if (year) filterParts.push(`YEAR({납품일자}) = ${year}`);
-  if (month) filterParts.push(`MONTH({납품일자}) = ${month}`);
-  if (itemCode) filterParts.push(`SEARCH('${itemCode}', {품목코드})`);
-  const filterByFormula = filterParts.length > 0 ? `AND(${filterParts.join(', ')})` : '';
+<script>
+  let fullHistoryData = [];
+  (function() {
+    const yearSelect = document.getElementById('year-filter');
+    const monthSelect = document.getElementById('month-filter');
+    const currentYear = new Date().getFullYear();
+    for(let i=currentYear; i >= currentYear - 5; i--) yearSelect.add(new Option(i + '년', i));
+    monthSelect.innerHTML = '<option value="">전체 월</option>';
+    for (let i = 1; i <= 12; i++) monthSelect.add(new Option(i + '월', i));
+    yearSelect.value = currentYear;
+    monthSelect.value = new Date().getMonth() + 1;
+    searchHistory();
+  })();
 
-  try {
-    const records = await base('납품이력(25년)').select({ filterByFormula }).all();
+  async function searchHistory() {
+    document.getElementById('loading').style.display = 'inline-block';
+    showMessage('데이터를 조회하고 있습니다...', 'info');
     
-    const history = {};
-    records.forEach(r => {
-      const code = r.fields['품목코드'];
-      if (!code) return;
+    const filters = {
+      year: document.getElementById('year-filter').value,
+      month: document.getElementById('month-filter').value,
+      itemCode: document.getElementById('item-code-filter').value.trim()
+    };
+    const queryParams = new URLSearchParams(filters);
+    
+    try {
+        const response = await fetch(`/.netlify/functions/getDeliveryHistory?${queryParams}`);
+        const data = await response.json();
+        if(!response.ok) throw new Error(data.error);
 
-      if (!history[code]) {
-        history[code] = {
-          itemCode: code,
-          itemName: r.fields['제품명'],
-          grandTotalQuantity: 0,
-          transactions: []
-        };
-      }
-      const qty = parseNumber(r.fields['수량']);
-      history[code].grandTotalQuantity += qty;
-      history[code].transactions.push({
-        date: r.fields['납품일자'],
-        lot: r.fields.LOT,
-        quantity: qty,
-        mfgDate: r.fields['제조일자'],
-        expDate: r.fields['유효일자']
-      });
-    });
-
-    return { statusCode: 200, body: JSON.stringify(Object.values(history)) };
-  } catch (error) {
-    return { statusCode: 500, body: JSON.stringify({ error: error.message }) };
+        fullHistoryData = data || [];
+        renderHistoryTable(fullHistoryData);
+    } catch(err) {
+        showMessage('데이터 조회 오류: ' + err.message, 'error');
+        renderHistoryTable([]);
+    } finally {
+        document.getElementById('loading').style.display = 'none';
+    }
   }
-};
+  
+  function renderHistoryTable(data) {
+      const tbody = document.getElementById('history-tbody');
+      const tfoot = document.getElementById('history-tfoot');
+      tbody.innerHTML = ''; tfoot.innerHTML = '';
+      if (!data || data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3">조회된 데이터가 없습니다.</td></tr>';
+        return;
+      }
+      const grandTotal = data.reduce((sum, item) => sum + item.grandTotalQuantity, 0);
+      data.forEach(item => {
+        tbody.insertRow().innerHTML = `
+          <td>${item.itemCode}</td>
+          <td style="text-align:left;">${item.itemName}</td>
+          <td class="number"><span class="clickable-quantity" onclick="showLotDetails('${item.itemCode}')">${formatNumberWithCommas(item.grandTotalQuantity)}</span></td>`;
+      });
+      tfoot.insertRow().innerHTML = `<td colspan="2" style="text-align: center;">총 합계</td><td class="number">${formatNumberWithCommas(grandTotal)}</td>`;
+      showMessage(`${data.length}개 품목의 이력이 조회되었습니다.`, 'success');
+  }
+
+  function showLotDetails(itemCode) {
+    const itemData = fullHistoryData.find(item => item.itemCode === itemCode);
+    if (!itemData) return;
+    document.getElementById('modal-title').textContent = `[${itemData.itemName}] 상세 납품 내역`;
+    const lotTbody = document.getElementById('lot-detail-tbody');
+    lotTbody.innerHTML = '';
+    itemData.transactions.sort((a, b) => new Date(b.date) - new Date(a.date)).forEach(tx => {
+      lotTbody.insertRow().innerHTML = `<td>${tx.date || '-'}</td><td>${tx.lot || '-'}</td><td class="number">${formatNumberWithCommas(tx.quantity)}</td>`;
+    });
+    document.getElementById('lot-detail-modal').style.display = 'block';
+  }
+</script>
