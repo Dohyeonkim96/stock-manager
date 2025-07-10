@@ -1,22 +1,27 @@
 const Airtable = require('airtable');
 
-const base = new Airtable({ apiKey: process.env.AIRTABLE_API_KEY }).base(process.env.AIRTABLE_BASE_ID);
-
 exports.handler = async function(event, context) {
-  // 1. 함수가 시작되었음을 로그에 기록
-  console.log("Function 'getInventoryDetails' has started.");
+  // --- 디버깅을 위한 코드 블록 ---
+  // 함수가 Netlify로부터 어떤 '열쇠' 값을 받았는지 확인합니다.
+  const apiKey = process.env.AIRTABLE_API_KEY || "API_KEY_NOT_FOUND"; // API 키가 없으면 "NOT_FOUND"
+  const baseId = process.env.AIRTABLE_BASE_ID || "BASE_ID_NOT_FOUND"; // Base ID가 없으면 "NOT_FOUND"
+
+  console.log("--- Verifying Environment Keys ---");
+  console.log(`Base ID Received: ${baseId}`);
+  // 보안을 위해 API 키는 앞 5자리만 로그에 남깁니다.
+  console.log(`API Key Received Starts With: ${apiKey.substring(0, 5)}...`);
+  console.log("---------------------------------");
+  // --- 디버깅 코드 끝 ---
+
+  const base = new Airtable({ apiKey: process.env.AIRTABLE_API_KEY }).base(process.env.AIRTABLE_BASE_ID);
 
   try {
-    // 2. '품목정보' 테이블에서 데이터 조회를 시도함을 로그에 기록
     console.log("Attempting to fetch from '품목정보' table...");
     const itemRecords = await base('품목정보').select().all();
-    // 3. '품목정보' 테이블에서 가져온 데이터 개수를 로그에 기록
     console.log(`Successfully fetched ${itemRecords.length} records from '품목정보'.`);
 
-    // 4. '재고리스트' 테이블에서 데이터 조회를 시도함을 로그에 기록
-    console.log("Attempting to fetch from '재고리스트' table...");
+    // (이하 생략) ... 기존 코드와 동일 ...
     const stockRecords = await base('재고리스트').select().all();
-    // 5. '재고리스트' 테이블에서 가져온 데이터 개수를 로그에 기록
     console.log(`Successfully fetched ${stockRecords.length} records from '재고리스트'.`);
 
     const itemsById = {};
@@ -57,7 +62,6 @@ exports.handler = async function(event, context) {
       });
     });
 
-    // 6. 모든 처리가 끝나고 정상적으로 데이터를 반환함을 로그에 기록
     console.log("Processing complete. Sending success response.");
     return {
       statusCode: 200,
@@ -65,7 +69,6 @@ exports.handler = async function(event, context) {
     };
 
   } catch (error) {
-    // 7. 만약 위 과정 중 어디선가 오류가 발생하면, 그 오류를 로그에 상세히 기록
     console.error("An error occurred inside the function:", error);
     return {
       statusCode: 500,
