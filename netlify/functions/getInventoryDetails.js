@@ -1,15 +1,24 @@
 const Airtable = require('airtable');
 
-// 이 코드는 Netlify에 등록된 '열쇠'들을 사용해 Airtable에 접속합니다.
 const base = new Airtable({ apiKey: process.env.AIRTABLE_API_KEY }).base(process.env.AIRTABLE_BASE_ID);
 
 exports.handler = async function(event, context) {
-  try {
-    // Airtable의 '재고리스트' 테이블에서 모든 데이터를 가져옵니다.
-    const itemRecords = await base('품목정보').select().all();
-    const stockRecords = await base('재고리스트').select().all();
+  // 1. 함수가 시작되었음을 로그에 기록
+  console.log("Function 'getInventoryDetails' has started.");
 
-    // 데이터를 웹사이트에서 쓰기 편한 형태로 가공합니다.
+  try {
+    // 2. '품목정보' 테이블에서 데이터 조회를 시도함을 로그에 기록
+    console.log("Attempting to fetch from '품목정보' table...");
+    const itemRecords = await base('품목정보').select().all();
+    // 3. '품목정보' 테이블에서 가져온 데이터 개수를 로그에 기록
+    console.log(`Successfully fetched ${itemRecords.length} records from '품목정보'.`);
+
+    // 4. '재고리스트' 테이블에서 데이터 조회를 시도함을 로그에 기록
+    console.log("Attempting to fetch from '재고리스트' table...");
+    const stockRecords = await base('재고리스트').select().all();
+    // 5. '재고리스트' 테이블에서 가져온 데이터 개수를 로그에 기록
+    console.log(`Successfully fetched ${stockRecords.length} records from '재고리스트'.`);
+
     const itemsById = {};
     itemRecords.forEach(record => {
       itemsById[record.fields['유한 품번']] = {
@@ -34,7 +43,7 @@ exports.handler = async function(event, context) {
           lots: []
         };
       }
-      
+
       const quantity = record.fields['수량'] || 0;
       inventory[itemCode].totalQuantity += quantity;
       inventory[itemCode].lots.push({
@@ -47,14 +56,17 @@ exports.handler = async function(event, context) {
         remarks: record.fields['비고']
       });
     });
-    
-    // 성공적으로 데이터를 가져왔다고 알리고, 가공된 데이터를 전달합니다.
+
+    // 6. 모든 처리가 끝나고 정상적으로 데이터를 반환함을 로그에 기록
+    console.log("Processing complete. Sending success response.");
     return {
       statusCode: 200,
       body: JSON.stringify(Object.values(inventory)),
     };
+
   } catch (error) {
-    // 만약 에러가 발생하면 에러 메시지를 전달합니다.
+    // 7. 만약 위 과정 중 어디선가 오류가 발생하면, 그 오류를 로그에 상세히 기록
+    console.error("An error occurred inside the function:", error);
     return {
       statusCode: 500,
       body: JSON.stringify({ message: error.message }),
