@@ -86,7 +86,7 @@
     </div>
     <div class="modal-body">
       <p id="editModalItemNameLotInfo" style="font-weight:bold; margin-bottom:var(--spacing-md);"></p>
-      <input type="hidden" id="editLotSheetRowIndex">
+      <input type="hidden" id="editLotAirtableRecordId">
       <div class="form-group"><label for="editLotNumber">LOT 번호*</label><input type="text" id="editLotNumber" class="editable"></div>
       <div class="form-group"><label for="editLotQuantity">수량*</label><input type="number" id="editLotQuantity" min="0" class="editable"></div>
       <div class="form-group"><label for="editMfgDate">제조일자</label><input type="date" id="editMfgDate" class="editable"></div>
@@ -111,34 +111,28 @@
         closeModal(e.target.id);
       }
     });
-    const thisScript = document.currentScript;
-    new MutationObserver((m, o) => !document.contains(thisScript) && o.disconnect()).observe(document.body, { childList: true, subtree: true });
   })();
   
   async function fetchInventoryData() {
     document.getElementById('loading').style.display = 'block';
     showMessage('재고 데이터를 조회하고 있습니다...', 'info');
     try {
-      // 우리가 4단계에서 만든 '전화선'을 호출합니다.
       const response = await fetch('/.netlify/functions/getInventoryDetails');
-      
       if (!response.ok) {
-        throw new Error(`서버 연결에 실패했습니다.`);
+        const errData = await response.json();
+        throw new Error(errData.message || '서버 연결에 실패했습니다.');
       }
-      
       const data = await response.json();
 
       inventoryDataStore = data || [];
       const classifications = [...new Set(data.map(item => item.classification || '미분류'))].sort();
       populateCategoryFilter(classifications);
       renderInventorySummaryTable();
-      
       if (!data || data.length === 0) {
-        showMessage('조회된 재고 데이터가 없습니다.', 'info');
+          showMessage('조회된 재고 데이터가 없습니다.', 'info');
       } else {
         showMessage('재고 데이터 조회가 완료되었습니다.', 'success');
       }
-
     } catch (err) {
       showMessage('재고 데이터 조회 오류: ' + err.message, 'error');
     } finally {
@@ -200,8 +194,8 @@
           <td class="number">${formatNumberWithCommas(lot.palletQty)}</td>
           <td>${lot.remarks || '-'}</td>
           <td class="action-buttons">
-            <button class="button-secondary" onclick="openEditLotModal('${item.itemCode}', ${lot.originalSheetRowIndex})">수정</button>
-            <button class="button-danger" onclick="deleteInventoryLot(${lot.originalSheetRowIndex})">삭제</button>
+            <button class="button-secondary" onclick="openEditLotModal('${item.itemCode}', '${lot.airtableRecordId}')">수정</button>
+            <button class="button-danger" onclick="deleteInventoryLot('${lot.airtableRecordId}')">삭제</button>
           </td>`;
       });
     } else {
@@ -210,9 +204,9 @@
     document.getElementById('inventoryDetailModal').style.display = 'block';
   }
 
-  function openEditLotModal(itemCode, sheetRowIndex) {
+  function openEditLotModal(itemCode, airtableRecordId) {
     const parentItem = inventoryDataStore.find(i => i.itemCode === itemCode);
-    const lotToEdit = parentItem?.lots.find(l => l.originalSheetRowIndex === sheetRowIndex);
+    const lotToEdit = parentItem?.lots.find(l => l.airtableRecordId === airtableRecordId);
     
     if (!lotToEdit) {
       showMessage('수정할 LOT 정보를 찾지 못했습니다.', 'error');
@@ -220,7 +214,7 @@
     }
     
     document.getElementById('editModalItemNameLotInfo').textContent = `${parentItem.itemName} (LOT: ${lotToEdit.lot})`;
-    document.getElementById('editLotSheetRowIndex').value = sheetRowIndex;
+    document.getElementById('editLotAirtableRecordId').value = airtableRecordId;
     document.getElementById('editLotNumber').value = lotToEdit.lot || '';
     document.getElementById('editLotQuantity').value = lotToEdit.quantity || '0';
     document.getElementById('editMfgDate').value = lotToEdit.mfgDate || '';
@@ -231,59 +225,14 @@
     document.getElementById('editLotDetailModal').style.display = 'block';
   }
 
-  function saveLotUpdate() {
-    const spinner = document.getElementById('editLotSpinner');
-    spinner.style.display = 'inline-block';
-    
-    const updateData = {
-      sheetRowIndex: parseInt(document.getElementById('editLotSheetRowIndex').value),
-      newData: {
-        lot: document.getElementById('editLotNumber').value.trim(),
-        quantity: Number(document.getElementById('editLotQuantity').value),
-        mfgDate: document.getElementById('editMfgDate').value,
-        expDate: document.getElementById('editExpDate').value,
-        palletQty: document.getElementById('editPalletQty').value.trim(),
-        remarks: document.getElementById('editRemarks').value.trim()
-      }
-    };
-
-    if (!updateData.newData.lot || isNaN(updateData.newData.quantity) || updateData.newData.quantity < 0) {
-      showMessage("LOT 번호와 0 이상의 수량을 정확히 입력해주세요.", "error");
-      spinner.style.display = 'none';
-      return;
-    }
-    
-    google.script.run
-      .withSuccessHandler(res => {
-        spinner.style.display = 'none';
-        showMessage(res.message, res.success ? "success" : "error");
-        if(res.success) {
-          closeModal('editLotDetailModal');
-          closeModal('inventoryDetailModal');
-          fetchInventoryData(); // Refresh all data
-        }
-      })
-      .withFailureHandler(err => {
-        spinner.style.display = 'none';
-        showMessage("수정 중 오류 발생: " + err.message, "error");
-      })
-      .updateInventoryLotDetail(updateData);
+  async function saveLotUpdate() {
+    // 이 기능은 별도의 Netlify Function이 필요합니다.
+    showMessage("수정 기능은 아직 구현되지 않았습니다.", "info");
   }
 
-  function deleteInventoryLot(sheetRowIndex) {
-    if (confirm(`이 LOT 항목(시트 ${sheetRowIndex}행)을 정말 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.`)) {
-      showMessage('LOT 정보 삭제 중...', 'info');
-      google.script.run
-        .withSuccessHandler(res => {
-          showMessage(res.message, res.success ? "success" : "error");
-          if(res.success) {
-            closeModal('inventoryDetailModal');
-            fetchInventoryData(); // Refresh all data
-          }
-        })
-        .withFailureHandler(err => showMessage("삭제 중 오류 발생: " + err.message, "error"))
-        .deleteInventoryLotItem(sheetRowIndex);
-    }
+  async function deleteInventoryLot(recordId) {
+    // 이 기능은 별도의 Netlify Function이 필요합니다.
+    showMessage("삭제 기능은 아직 구현되지 않았습니다.", "info");
   }
 
   function closeModal(modalId) {
