@@ -72,13 +72,12 @@
   (function initializePage() {
     fetchPoStatus();
     window.addEventListener('click', e => { if (e.target.id === 'order-details-modal') closeDetailsModal(); });
-    const thisScript = document.currentScript;
-    new MutationObserver((m, o) => !document.contains(thisScript) && o.disconnect()).observe(document.body, { childList: true, subtree: true });
   })();
 
-  function fetchPoStatus() {
+  async function fetchPoStatus() {
     const spinner = document.getElementById('loading-spinner');
     spinner.style.display = 'inline-block';
+    showMessage('데이터 조회 중...', 'info');
     
     const filters = {
       yuhanPartNo: document.getElementById('pn-filter').value.trim(),
@@ -86,29 +85,26 @@
       businessUnit: document.getElementById('bu-filter').value || ''
     };
     
-    google.script.run
-      .withSuccessHandler(data => {
-        spinner.style.display = 'none';
-        if (data.error) { 
-            showMessage('데이터 조회 오류: ' + data.error, 'error'); 
-            return; 
-        }
-        
-        // [수정] 서버에서 모든 계산을 처리하므로 클라이언트 측 계산 로직 제거
-        poStatusDataStore = data.results || [];
-        
-        if (!areFiltersPopulated) {
-          populateFilters(data.categories, data.businessUnits);
-          areFiltersPopulated = true;
-        }
-        renderPoStatusTable(poStatusDataStore);
-      })
-      .withFailureHandler(err => {
-        spinner.style.display = 'none';
-        showMessage('서버 통신 오류: ' + err.message, 'error');
-      })
-      // [수정] PO 잔량 상세 조회를 위한 올바른 함수 호출
-      .getPoStatusDetails(filters);
+    const queryParams = new URLSearchParams(filters).toString();
+
+    try {
+      const response = await fetch(`/.netlify/functions/getPoStatusDetails?${queryParams}`);
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error);
+
+      poStatusDataStore = data.results || [];
+      
+      if (!areFiltersPopulated) {
+        populateFilters(data.categories, data.businessUnits);
+        areFiltersPopulated = true;
+      }
+      renderPoStatusTable(poStatusDataStore);
+      showMessage('조회가 완료되었습니다.', 'success');
+    } catch (err) {
+      showMessage('데이터 조회 오류: ' + err.message, 'error');
+    } finally {
+      spinner.style.display = 'none';
+    }
   }
 
   function populateFilters(categories, businessUnits) {
@@ -118,15 +114,11 @@
     buFilter.innerHTML = '<option value="">전체 사업부</option>';
     if (businessUnits && businessUnits.length > 0) {
         businessUnits.forEach(bu => buFilter.add(new Option(bu, bu)));
-    } else {
-        buFilter.add(new Option('항목 없음', '', true, true)).disabled = true;
     }
 
     categoryFilter.innerHTML = '<option value="">전체 카테고리</option>';
     if (categories && categories.length > 0) {
         categories.forEach(cat => categoryFilter.add(new Option(cat, cat)));
-    } else {
-        categoryFilter.add(new Option('항목 없음', '', true, true)).disabled = true;
     }
   }
 
@@ -146,7 +138,7 @@
     data.forEach(item => {
       tbody.insertRow().innerHTML = `
         <td>${item.itemCode}</td>
-        <td>${item.gskemPN}</td>
+        <td>${item.gskemPN || ''}</td>
         <td><span class="clickable-item-name" onclick="showOrderDetails('${item.itemCode}')">${item.itemName}</span></td>
         <td>${formatNumberWithCommas(item.totalOrdered)}</td>
         <td>${formatNumberWithCommas(item.cumulativeDelivered)}</td>
