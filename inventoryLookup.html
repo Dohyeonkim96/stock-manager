@@ -34,7 +34,7 @@
   let inventoryDataStore = [];
   (async function() {
     document.getElementById('loading').style.display = 'block';
-    showMessage('재고 데이터를 조회하고 있습니다...', 'info');
+    // [수정] "재고 데이터를 조회하고 있습니다" 팝업 제거
     try {
       const response = await fetch('/.netlify/functions/getInventoryDetails');
       if (!response.ok) {
