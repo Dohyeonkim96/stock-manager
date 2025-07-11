@@ -1,8 +1,8 @@
 <style>
-  .filter-controls { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end; margin-bottom: 24px; padding: 16px; background-color: #fdfdfe; border: 1px solid #dee2e6; border-radius: 0.375rem; }
+  .filter-controls { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end; margin-bottom: 24px; padding: 16px; background-color: #fdfdfe; border: 1px solid var(--border-color); border-radius: 0.375rem; }
   .data-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 0.875rem; }
-  .data-table th, .data-table td { border-bottom: 1px solid #dee2e6; padding: 8px 16px; text-align: left; white-space: nowrap; vertical-align: middle; }
-  .data-table th { background-color: #f8f9fa; font-weight: 700; color: #6c757d; text-align: center; border-top: 1px solid #dee2e6; }
+  .data-table th, .data-table td { border-bottom: 1px solid var(--border-color); padding: 8px 16px; text-align: left; white-space: nowrap; vertical-align: middle; }
+  .data-table th { background-color: #f8f9fa; font-weight: 700; color: #6c757d; text-align: center; border-top: 1px solid var(--border-color); }
   .data-table td.number { text-align: right; }
   .data-table .clickable-item-name { color: #0d6efd; text-decoration: underline; cursor: pointer; font-weight: 500; }
   .modal { display: none; position: fixed; z-index: 1050; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(30, 41, 59, 0.6); }
@@ -11,14 +11,25 @@
 </style>
 <div class="section-card">
   <h1 class="page-main-title">재고 현황 조회</h1>
-  <div id="messageArea" class="message"></div>
   <div class="filter-controls">
     <div class="form-group" style="margin-bottom:0;"><label for="categoryFilterSelect">분류 선택:</label><select id="categoryFilterSelect" onchange="renderInventorySummaryTable()"></select></div>
   </div>
   <div id="loading" class="loading-spinner" style="display:block; margin: 32px auto;"></div>
   <div style="overflow-x: auto;"><table class="data-table"><thead><tr><th>분류</th><th>품목코드</th><th style="min-width: 200px; text-align:left;">제품명</th><th class="number">총 수량</th></tr></thead><tbody id="inventoryTableBody"></tbody></table></div>
 </div>
-<div id="inventoryDetailModal" class="modal"><div class="modal-content"><div class="modal-header"><h3 id="modalDetailTitle">LOT별 상세 재고</h3><span class="close-button" onclick="closeModal('inventoryDetailModal')">&times;</span></div><div style="max-height: 300px; overflow-y: auto;"><table class="data-table"><thead><tr><th>LOT</th><th class="number">수량</th></tr></thead><tbody id="inventoryLotDetailTableBody"></tbody></table></div></div></div>
+<div id="inventoryDetailModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="modalDetailTitle">LOT별 상세 재고</h3><span class="close-button" onclick="closeModal('inventoryDetailModal')">&times;</span>
+        </div>
+        <div style="max-height: 300px; overflow-y: auto;">
+            <table class="data-table">
+                <thead><tr><th>LOT</th><th class="number">수량</th><th>제조일자</th><th>유통기한</th><th>비고</th></tr></thead>
+                <tbody id="inventoryLotDetailTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
 <script>
   let inventoryDataStore = [];
   (async function() {
@@ -26,7 +37,10 @@
     showMessage('재고 데이터를 조회하고 있습니다...', 'info');
     try {
       const response = await fetch('/.netlify/functions/getInventoryDetails');
-      if (!response.ok) throw new Error('서버 연결 실패');
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.message || '서버 연결 실패');
+      }
       const data = await response.json();
       inventoryDataStore = data || [];
       const classifications = [...new Set(data.map(item => item.classification || '미분류'))].sort();
@@ -34,7 +48,7 @@
       select.innerHTML = '<option value="">전체 분류 보기</option>';
       classifications.forEach(cat => select.add(new Option(cat, cat)));
       renderInventorySummaryTable();
-      showMessage('조회 완료', 'success');
+      // [수정] 조회 완료 팝업 제거
     } catch (err) {
       showMessage('조회 오류: ' + err.message, 'error');
     } finally {
@@ -60,9 +74,13 @@
     document.getElementById('modalDetailTitle').textContent = `[${item.itemName}] LOT별 상세 재고`;
     const lotTbody = document.getElementById('inventoryLotDetailTableBody');
     lotTbody.innerHTML = '';
-    item.lots.forEach(lot => {
-      lotTbody.insertRow().innerHTML = `<td>${lot.lot}</td><td class="number">${formatNumberWithCommas(lot.quantity)}</td>`;
-    });
+    if (item.lots && item.lots.length > 0) {
+        item.lots.forEach(lot => {
+            lotTbody.insertRow().innerHTML = `<td>${lot.lot || '-'}</td><td class="number">${formatNumberWithCommas(lot.quantity)}</td><td>${lot.mfgDate || '-'}</td><td>${lot.expDate || '-'}</td><td>${lot.remarks || '-'}</td>`;
+        });
+    } else {
+        lotTbody.innerHTML = `<tr><td colspan="5" style="text-align:center;">LOT 정보가 없습니다.</td></tr>`;
+    }
     document.getElementById('inventoryDetailModal').style.display = 'block';
   }
   function closeModal(id) { document.getElementById(id).style.display = 'none'; }
