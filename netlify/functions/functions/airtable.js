@@ -1,53 +1,67 @@
-const Airtable = require('airtable');
+const AIRTABLE_BASE_ID = 'appq4lQ9vpBiBdn93';
+const AIRTABLE_PERSONAL_ACCESS_TOKEN = 'patE1jSQ92OShRZ6y.610d9d1d8653f6e3671710eba078e7c1063d2e2ddd4f2cbd18a9311c2a49aa4f';
+const AIRTABLE_API_URL = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}`;
 
-const
-    apiKey = 'patE1jSQ92OShRZ6y.610d9d1d8653f6e3671710eba078e7c1063d2e2ddd4f2cbd18a9311c2a49aa4f';
-const baseId = 'appq4lQ9vpBiBdn93';
+// Airtable API 호출을 위한 헬퍼 함수
+async function fetchAirtableData(tableName, options = {}) {
+    const url = new URL(`${AIRTABLE_API_URL}/${encodeURIComponent(tableName)}`);
 
-const base = new Airtable({ apiKey }).base(baseId);
+    // 옵션으로 전달된 쿼리 파라미터를 URL에 추가
+    Object.entries(options).forEach(([key, value]) => {
+        if (Array.isArray(value)) {
+            value.forEach(item => url.searchParams.append(`${key}[]`, item));
+        } else {
+            url.searchParams.set(key, value);
+        }
+    });
 
-exports.handler = async function(event, context) {
-    const { httpMethod, queryStringParameters, body } = event;
-    const { tableName, id, view } = queryStringParameters;
+    try {
+        const response = await fetch(url.toString(), {
+            headers: {
+                'Authorization': `Bearer ${AIRTABLE_PERSONAL_ACCESS_TOKEN}`,
+            },
+        });
 
-    if (!tableName) {
+        if (!response.ok) {
+            const errorData = await response.json();
+            console.error('Airtable API Error:', errorData);
+            throw new Error(`Airtable API error: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        return data.records.map(record => ({
+            id: record.id,
+            ...record.fields,
+        }));
+    } catch (error) {
+        console.error('Fetch Error:', error);
+        return {
+            statusCode: 500,
+            body: JSON.stringify({ error: error.message }),
+        };
+    }
+}
+
+// Netlify 함수 핸들러
+exports.handler = async (event, context) => {
+    const { table, ...options } = event.queryStringParameters;
+
+    if (!table) {
         return {
             statusCode: 400,
-            body: JSON.stringify({ error: 'tableName is required' }),
+            body: JSON.stringify({ error: 'Table name is required.' }),
         };
     }
 
-    const table = base(tableName);
-
     try {
-        if (httpMethod === 'GET') {
-            if (id) {
-                const record = await table.find(id);
-                return { statusCode: 200, body: JSON.stringify(record) };
-            } else {
-                const records = await table.select({ view: view || 'Grid view' }).all();
-                return { statusCode: 200, body: JSON.stringify(records) };
-            }
-        } else if (httpMethod === 'POST') {
-            const newRecord = await table.create(JSON.parse(body).fields);
-            return { statusCode: 201, body: JSON.stringify(newRecord) };
-        } else if (httpMethod === 'PATCH') {
-            if (!id) return { statusCode: 400, body: JSON.stringify({ error: 'Record ID is required for PATCH' }) };
-            const updatedRecord = await table.update(id, JSON.parse(body).fields);
-            return { statusCode: 200, body: JSON.stringify(updatedRecord) };
-        } else if (httpMethod === 'DELETE') {
-            if (!id) return { statusCode: 400, body: JSON.stringify({ error: 'Record ID is required for DELETE' }) };
-            const deletedRecord = await table.destroy(id);
-            return { statusCode: 200, body: JSON.stringify(deletedRecord) };
-        }
-
+        const data = await fetchAirtableData(table, options);
         return {
-            statusCode: 405,
-            body: JSON.stringify({ error: 'Method Not Allowed' }),
+            statusCode: 200,
+            body: JSON.stringify(data),
         };
     } catch (error) {
         return {
-            statusCode: error.statusCode || 500,
+            statusCode: 500,
             body: JSON.stringify({ error: error.message }),
         };
     }
