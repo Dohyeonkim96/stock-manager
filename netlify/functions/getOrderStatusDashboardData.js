@@ -7,6 +7,7 @@ const parseNumber = (str) => {
 };
 
 exports.handler = async function(event, context) {
+  // 'category' 파라미터 수신 부분 제거
   const { yuhanPartNo, businessUnit } = event.queryStringParameters;
 
   try {
@@ -17,11 +18,13 @@ exports.handler = async function(event, context) {
     if (businessUnit) {
       filterParts.push(`{사업부} = '${businessUnit}'`);
     }
+    // 'category' 필터 생성 로직 제거
+    
     const filterByFormula = filterParts.length > 0 ? `AND(${filterParts.join(', ')})` : '';
 
     const records = await base('발주현황').select({ filterByFormula }).all();
     
-    // [수정] '카테고리' 관련 로직 전체 제거
+    // '카테고리'를 가져오던 로직 제거
     const allRecordsForFilters = await base('발주현황').select({ fields: ['사업부'] }).all();
     const allBusinessUnits = [...new Set(allRecordsForFilters.map(r => r.fields['사업부']).filter(Boolean))];
 
@@ -51,8 +54,7 @@ exports.handler = async function(event, context) {
       statusCode: 200,
       body: JSON.stringify({
         results: Object.values(poByItem),
-        // [수정] categories 키 제거
-        businessUnits: allBusinessUnits
+        businessUnits: allBusinessUnits // categories 키 제거
       }),
     };
   } catch (error) {
