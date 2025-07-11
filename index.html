@@ -197,35 +197,39 @@
     });
   }
 
-  async function getYuhanInfo(itemCard) {
+  function getYuhanInfo(itemCard) {
     const yuhanPartNo = itemCard.querySelector('[name="yuhanPartNo"]').value.trim();
     const gskemInput = itemCard.querySelector('[name="gskemPartNo"]');
     const nameInput = itemCard.querySelector('[name="itemName"]');
     const buInput = itemCard.querySelector('[name="businessUnit"]');
-
+    // 필드 초기화
     gskemInput.value = ''; nameInput.value = ''; buInput.value = '';
     if (!yuhanPartNo) return;
 
     showMessage('품번 정보 조회 중...', 'info', '#creationMessageArea');
-    try {
-      const response = await fetch(`/.netlify/functions/getYuhanProductInfo?yuhanPartNo=${yuhanPartNo}`);
-      const res = await response.json();
-      if (!response.ok) throw new Error(res.error || '알 수 없는 오류');
-
-      gskemInput.value = res.지에스켐품번 || ''; 
-      nameInput.value = res.품명 || ''; 
-      buInput.value = res.사업부 || '';
-      showMessage('품번 정보가 조회되었습니다.', 'success', '#creationMessageArea');
-    } catch (err) {
-      nameInput.value = '일치하는 품번 없음'; 
-      showMessage(`조회 오류: ${err.message}`, 'error', '#creationMessageArea');
-    }
+    google.script.run
+      .withSuccessHandler(res => {
+        if (res && res.error) {
+          showMessage(`조회 오류: ${res.error}`, 'error', '#creationMessageArea');
+          return;
+        }
+        if (res) {
+            gskemInput.value = res.지에스켐품번 || ''; 
+            nameInput.value = res.품명 || ''; 
+            buInput.value = res.사업부 || '';
+            showMessage('품번 정보가 조회되었습니다.', 'success', '#creationMessageArea');
+        } else {
+            nameInput.value = '일치하는 품번 없음'; 
+            showMessage('일치하는 품번 정보가 없습니다.', 'error', '#creationMessageArea');
+        }
+      })
+      .withFailureHandler(err => showMessage(`조회 오류: ${err.message}`, 'error', '#creationMessageArea'))
+      .getYuhanProductInfo(yuhanPartNo);
   }
 
-  async function submitOrder() {
+  function submitOrder() {
     const spinner = document.getElementById('submitSpinner');
     spinner.style.display = 'inline-block';
-
     const orders = Array.from(document.querySelectorAll('#orderItemsContainer .order-item-card')).map(card => ({
       issueDate: card.querySelector('[name="issueDate"]').value, 
       yuhanPartNo: card.querySelector('[name="yuhanPartNo"]').value.trim(),
@@ -243,55 +247,50 @@
     }
 
     showMessage('발주서 등록 중...', 'info', '#creationMessageArea');
-    try {
-      const response = await fetch('/.netlify/functions/submitOrderToSheet', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(orders)
-      });
-      const res = await response.json();
-      if (!response.ok) throw new Error(res.message);
-      
-      showMessage(res.message, 'success', '#creationMessageArea');
-      document.getElementById('orderItemsContainer').innerHTML = '';
-      addOrderItem();
-      fetchOrderStatusData(); // 성공 시 현황 다시 로드
-    } catch (err) {
-      showMessage(`서버 오류: ${err.message}`, 'error', '#creationMessageArea'); 
-    } finally {
-      spinner.style.display = 'none';
-    }
+    google.script.run
+      .withSuccessHandler(res => {
+        spinner.style.display = 'none';
+        showMessage(res.message, res.success ? 'success' : 'error', '#creationMessageArea');
+        if (res.success) {
+            document.getElementById('orderItemsContainer').innerHTML = '';
+            addOrderItem();
+            fetchOrderStatusData(); // 성공 시 현황 다시 로드
+        }
+      })
+      .withFailureHandler(err => { 
+        spinner.style.display = 'none'; 
+        showMessage(`서버 오류: ${err.message}`, 'error', '#creationMessageArea'); 
+      })
+      .submitOrderToSheet(orders);
   }
 
-  async function fetchOrderStatusData() {
+  function fetchOrderStatusData() {
     const spinner = document.getElementById('filterSpinner');
     spinner.style.display = 'inline-block';
-
     const filters = {
       yuhanPartNo: document.getElementById('filterYuhanPartNo').value.trim(),
       category: document.getElementById('category-filter').value || '',
       businessUnit: document.getElementById('bu-filter').value || ''
     };
-    
-    // URL 쿼리 파라미터로 필터 전달
-    const queryParams = new URLSearchParams(filters).toString();
-    
-    try {
-      const response = await fetch(`/.netlify/functions/getOrderStatusDashboardData?${queryParams}`);
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error);
-      
-      dashboardDataStore = data.results;
-      if (!areFiltersPopulated) {
-        populateFilters(data.categories, data.businessUnits);
-        areFiltersPopulated = true;
-      }
-      renderOrderStatusTable(dashboardDataStore);
-    } catch (err) {
-      showMessage('서버 통신 오류: ' + err.message, 'error', '#statusMessageArea'); 
-    } finally {
-      spinner.style.display = 'none';
-    }
+    google.script.run
+      .withSuccessHandler(data => {
+        spinner.style.display = 'none';
+        if (data.error) { 
+          showMessage('데이터 조회 오류: ' + data.error, 'error', '#statusMessageArea'); 
+          return; 
+        }
+        dashboardDataStore = data.results;
+        if (!areFiltersPopulated) {
+          populateFilters(data.categories, data.businessUnits);
+          areFiltersPopulated = true;
+        }
+        renderOrderStatusTable(dashboardDataStore);
+      })
+      .withFailureHandler(err => { 
+        spinner.style.display = 'none'; 
+        showMessage('서버 통신 오류: ' + err.message, 'error', '#statusMessageArea'); 
+      })
+      .getOrderStatusDashboardData(filters);
   }
 
   function populateFilters(categories, businessUnits) {
