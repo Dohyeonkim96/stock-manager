@@ -17,10 +17,10 @@ exports.handler = async function(event, context) {
         '수량': Number(order.quantity),
         '납기일': order.deliveryDate,
         '사업부': order.businessUnit,
+        '카테고리': order.category,
       }
     }));
 
-    // Airtable '발주현황' 테이블에 데이터를 생성합니다.
     await base('발주현황').create(recordsToCreate);
 
     return {
