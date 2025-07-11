@@ -33,20 +33,20 @@
                 <h2>입고 정보 입력</h2>
                 <form id="receiving-form">
                     <div class="form-group">
-                        <label for="po-number">발주번호</label>
-                        <input type="text" id="po-number" name="po-number" required>
-                    </div>
-                     <div class="form-group">
-                        <label for="product-code">품번</label>
-                        <input type="text" id="product-code" name="product-code" readonly>
+                        <label for="product-code-search">품번 조회</label>
+                        <input type="text" id="product-code-search" name="product-code-search" placeholder="처리할 품번을 입력하고 Enter 또는 다른 곳을 클릭하세요" required>
                     </div>
                     <div class="form-group">
                         <label for="product-name">품명</label>
                         <input type="text" id="product-name" name="product-name" readonly>
                     </div>
                     <div class="form-group">
+                        <label for="po-date">최근 발주일자</label>
+                        <input type="text" id="po-date" name="po-date" readonly>
+                    </div>
+                    <div class="form-group">
                         <label for="receiving-quantity">입고수량</label>
-                        <input type="number" id="receiving-quantity" name="receiving-quantity" required>
+                        <input type="number" id="receiving-quantity" name="receiving-quantity" placeholder="실제 입고된 수량을 입력하세요" required>
                     </div>
                     <div class="button-group">
                         <button type="submit" class="btn-primary">입고 처리</button>
