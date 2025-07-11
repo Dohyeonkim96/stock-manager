@@ -20,7 +20,7 @@
 <div id="inventoryDetailModal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
-            <h3 id="modalDetailTitle">LOT별 상세 재고</h3><span class="close-button" onclick="closeModal('inventoryDetailModal')">&times;</span>
+            <h3 id="modalDetailTitle"></h3><span class="close-button" onclick="closeModal('inventoryDetailModal')">&times;</span>
         </div>
         <div style="max-height: 300px; overflow-y: auto;">
             <table class="data-table">
@@ -48,7 +48,6 @@
       select.innerHTML = '<option value="">전체 분류 보기</option>';
       classifications.forEach(cat => select.add(new Option(cat, cat)));
       renderInventorySummaryTable();
-      // [수정] 조회 완료 팝업 제거
     } catch (err) {
       showMessage('조회 오류: ' + err.message, 'error');
     } finally {
@@ -71,7 +70,7 @@
   function showLotDetailsModal(itemCode) {
     const item = inventoryDataStore.find(i => i.itemCode === itemCode);
     if (!item) return;
-    document.getElementById('modalDetailTitle').textContent = `[${item.itemName}] LOT별 상세 재고`;
+    document.getElementById('modalDetailTitle').textContent = item.itemName;
     const lotTbody = document.getElementById('inventoryLotDetailTableBody');
     lotTbody.innerHTML = '';
     if (item.lots && item.lots.length > 0) {
