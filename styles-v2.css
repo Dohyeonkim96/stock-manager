@@ -20,7 +20,7 @@ body {
     width: 250px; /* 좀 더 넓게 설정 */
     background-color: #043B72; /* 선호하는 색상 */
     color: white;
-    padding: 20px;
+    padding: 0 20px;
     display: flex;
     flex-direction: column;
     box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
@@ -28,14 +28,26 @@ body {
 }
 
 .sidebar .logo {
-    text-align: left; /* 로고 왼쪽 정렬 */
-    margin-bottom: 30px;
+    text-align: center;
+    padding: 22px 0;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #4a627a;
+}
+
+.sidebar .logo a {
+    text-decoration: none; /* 링크 밑줄 제거 */
+    color: inherit; /* 부모 요소의 색상 상속 */
 }
 
 .sidebar .logo h2 {
     margin: 0;
-    font-size: 1.8em; /* 좀 더 크게 */
-    color: white;
+    font-size: 1.6em;
+    color: #fff;
+    transition: color 0.3s ease;
+}
+
+.sidebar .logo a:hover h2 {
+    color: #bdc3c7; /* 호버 시 색상 변경 */
 }
 
 .sidebar .menu {
@@ -66,9 +78,10 @@ body {
 .sidebar .footer {
     text-align: left; /* 왼쪽 정렬 */
     font-size: 0.9em;
-    padding-top: 20px;
+    padding: 20px 0;
     border-top: 1px solid #4A627A;
 }
+
 
 /* Main Content Styles */
 .main-content {
@@ -329,11 +342,11 @@ button {
 
     .sidebar {
         width: 100%;
-        padding: 15px;
+        height: auto;
+        padding: 0 15px;
         flex-direction: row;
         align-items: center;
         justify-content: space-between;
-        overflow-x: auto;
         position: sticky;
         top: 0;
         z-index: 100;
@@ -342,22 +355,26 @@ button {
 
     .sidebar .logo {
         margin-bottom: 0;
+        border-bottom: none;
+        padding: 15px 0;
+    }
+
+    .sidebar .logo h2 {
+        font-size: 1.5em;
     }
 
     .sidebar .menu {
         display: flex;
-        margin: 0;
-        padding: 0;
+        flex-grow: 0;
     }
 
     .sidebar .menu li {
-        margin-left: 10px;
+        margin-left: 5px;
         margin-bottom: 0;
     }
-
+    
     .sidebar .menu a {
-        padding: 10px 12px;
-        font-size: 0.9em;
+        padding: 8px 10px;
     }
 
     .sidebar .footer {
@@ -378,17 +395,37 @@ button {
 
     .dashboard-filters {
         flex-direction: column;
-        align-items: flex-start;
+        align-items: stretch;
+    }
+
+    .dashboard-filters .form-group {
+        width: 100%;
     }
 }
 
 @media (max-width: 480px) {
+    .sidebar {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    .sidebar .logo {
+        width: 100%;
+        text-align: center;
+        padding: 10px 0;
+    }
+    .sidebar .menu {
+        justify-content: center;
+        width: 100%;
+        overflow-x: auto;
+        white-space: nowrap;
+        padding-bottom: 10px;
+    }
     .sidebar .logo h2 {
         font-size: 1.4em;
     }
 
     .sidebar .menu a {
-        font-size: 0.8em;
-        padding: 8px 10px;
+        font-size: 0.85em;
+        padding: 8px;
     }
 }
