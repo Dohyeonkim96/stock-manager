@@ -1,98 +1,62 @@
-<style>
-    .request-table { width: 100%; border-collapse: collapse; font-size: var(--font-size-sm); }
-    .request-table th, .request-table td { padding: var(--spacing-sm); border: 1px solid var(--border-color); text-align: center; vertical-align: middle; white-space: nowrap; }
-    .request-table .actions .button { font-size: 11px; padding: 5px 10px; }
-    @media (max-width: 1200px) {
-      .request-table thead { display: none; }
-      .request-table, .request-table tbody, .request-table tr, .request-table td { display: block; width: 100%; }
-      .request-table tr { border: 1px solid var(--primary-color); margin-bottom: var(--spacing-lg); }
-      .request-table td { display: flex; justify-content: space-between; text-align: right; border: none; border-bottom: 1px dashed var(--border-color); padding: var(--spacing-sm) 0; }
-      .request-table td::before { content: attr(data-label); font-weight: bold; text-align: left; }
-    }
-</style>
-
-<div class="section-card">
-    <h1 class="page-main-title">출고 요청 확인 및 처리</h1>
-    <div style="overflow-x: auto;">
-      <table class="request-table">
-        <thead>
-          <tr><th>요청일</th><th>품목코드</th><th>품명</th><th>LOT</th><th>수량</th><th>처리</th></tr>
-        </thead>
-        <tbody id="request-list-tbody"></tbody>
-      </table>
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>통합관리 시스템</title>
+    <link rel="stylesheet" href="styles-v2.css">
+</head>
+<body>
+    <div class="container">
+        <nav class="sidebar">
+            <div class="logo">
+                <img src="logo.png" alt="Yuhan Kimberly Logo">
+            </div>
+            <ul class="menu">
+                <li><a href="main.html">메인</a></li>
+                <li><a href="poStatus.html">발주현황</a></li>
+                <li><a href="stockReceiving.html">입고처리</a></li>
+                <li><a href="inventoryLookup.html">재고현황조회</a></li>
+                <li><a href="productionPlan.html">생산계획관리</a></li>
+                <li><a href="shippingRequest.html">출고요청</a></li>
+                <li><a href="shippingConfirmation.html" class="active">출고확정</a></li>
+                <li><a href="deliveryHistory.html">납품이력</a></li>
+            </ul>
+            <div class="footer">
+                <p>&copy; 2024 Yuhan Kimberly</p>
+            </div>
+        </nav>
+        <main class="main-content">
+            <header>
+                <h1>출고 확정</h1>
+            </header>
+            <section class="form-section">
+                <h2>출고 정보 입력</h2>
+                <form id="confirmation-form">
+                    <div class="form-group">
+                        <label for="request-number">출하요청번호</label>
+                        <input type="text" id="request-number" name="request-number" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="product-code-confirm">품번</label>
+                        <input type="text" id="product-code-confirm" name="product-code-confirm" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label for="product-name-confirm">품명</label>
+                        <input type="text" id="product-name-confirm" name="product-name-confirm" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label for="confirm-quantity">출고수량</label>
+                        <input type="number" id="confirm-quantity" name="confirm-quantity" required>
+                    </div>
+                    <div class="button-group">
+                        <button type="submit" class="btn-primary">출고 확정</button>
+                    </div>
+                </form>
+            </section>
+        </main>
     </div>
-    <div style="text-align: right; margin-top: 1rem;">
-      <button class="button-secondary" onclick="loadPendingShipments()">새로고침 <span id="loading" class="loading-spinner"></span></button>
-    </div>
-</div>
-
-<script>
-    (function() { loadPendingShipments(); })();
-
-    async function loadPendingShipments() {
-      const loadingSpinner = document.getElementById("loading");
-      loadingSpinner.style.display = 'inline-block';
-      
-      try {
-        const response = await fetch(`/.netlify/functions/manageShipmentRequest`);
-        const requests = await response.json();
-        if(!response.ok) throw new Error(requests.message || '데이터 조회 실패');
-        
-        const tbody = document.getElementById("request-list-tbody");
-        tbody.innerHTML = "";
-
-        if (requests.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;">확인 대기 중인 출고 요청이 없습니다.</td></tr>`;
-        } else {
-            requests.forEach(req => {
-              tbody.insertRow().innerHTML = `
-                <td data-label="요청일">${req['요청일'] || ''}</td>
-                <td data-label="품목코드">${req['품목코드'] || ''}</td>
-                <td data-label="품명" style="text-align:left;">${req['품명'] || ''}</td>
-                <td data-label="LOT">${req['LOT'] || ''}</td>
-                <td data-label="수량" style="font-weight:bold;">${formatNumberWithCommas(req['수량'])}</td>
-                <td class="actions" data-label="처리">
-                  <button class="button button-primary" onclick="handleConfirm('${req.rowId}')">확인</button>
-                  <button class="button button-danger" onclick="handleDelete('${req.rowId}')">삭제</button>
-                </td>`;
-            });
-        }
-      } catch(err) {
-        showMessage('조회 오류: ' + err.message, "error");
-      } finally {
-        loadingSpinner.style.display = 'none';
-      }
-    }
-
-    async function handleConfirm(rowId) {
-      if (!confirm(`이 출고 요청을 최종 확인하고 재고를 차감하시겠습니까?`)) return;
-      showMessage("처리 중...", "info");
-      try {
-        const response = await fetch(`/.netlify/functions/manageShipmentRequest`, {
-            method: 'POST', body: JSON.stringify({ rowId })
-        });
-        const res = await response.json();
-        if(!response.ok) throw new Error(res.message);
-        showMessage(res.message, "success");
-        loadPendingShipments();
-      } catch(err) {
-        showMessage('출고 처리 오류: ' + err.message, "error");
-      }
-    }
-
-    async function handleDelete(rowId) {
-      if (!confirm(`이 출고 요청을 삭제하시겠습니까?`)) return;
-      showMessage("삭제 중...", "info");
-      try {
-        const response = await fetch(`/.netlify/functions/manageShipmentRequest`, {
-            method: 'DELETE', body: JSON.stringify({ rowId })
-        });
-        const res = await response.json();
-        if(!response.ok) throw new Error(res.message);
-        showMessage(res.message, "success");
-        loadPendingShipments();
-      } catch(err) {
-        showMessage('삭제 처리 오류: ' + err.message, "error");
-      }
-    }
-</script>
+    <script src="https://cdn.jsdelivr.net/npm/airtable@0.11.6/build/airtable.browser.js"></script>
+    <script src="utils-v2.js"></script>
+</body>
+</html>
