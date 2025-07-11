@@ -1,47 +1,111 @@
-/ poStatus.html의 <script> 내부
+<style>
+  .filter-controls { padding: var(--spacing-md); background-color: #fdfdfe; border: 1px solid var(--border-color); border-radius: var(--border-radius-md); margin-bottom: var(--spacing-md); display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--spacing-md); align-items: flex-end; }
+  .filter-controls .form-group { margin-bottom: 0; }
+  .data-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: var(--font-size-sm); }
+  .data-table th, .data-table td { border-bottom: 1px solid var(--border-color); padding: var(--spacing-sm) var(--spacing-md); text-align: right; white-space: nowrap; vertical-align: middle; }
+  .data-table th { background-color: #f8f9fa; font-weight: 700; text-align: center; border-top: 1px solid var(--border-color); }
+  .data-table tfoot { font-weight: bold; background-color: #f1f3f4; }
+  .data-table th:nth-child(-n+3), .data-table td:nth-child(-n+3) { text-align: left; }
+  .data-table .balance-cell { font-weight: bold; color: var(--danger-color); }
+</style>
 
-// [기존 코드]
-/*
-google.script.run
-  .withSuccessHandler(data => {
-    // ... 데이터 처리 ...
-  })
-  .withFailureHandler(err => {
-    // ... 오류 처리 ...
-  })
-  .getPoStatusDetails(filters);
-*/
+<div class="section-card">
+  <h1 class="page-main-title">PO(발주) 잔량 현황</h1>
+  <div class="filter-controls">
+      <div class="form-group"><label for="bu-filter">사업부</label><select id="bu-filter" onchange="fetchPoStatus()"></select></div>
+      <div class="form-group"><label for="category-filter">카테고리</label><select id="category-filter" onchange="fetchPoStatus()"></select></div>
+      <div class="form-group"><label for="pn-filter">유한품번</label><input type="text" id="pn-filter" class="editable" placeholder="품번으로 검색"></div>
+      <div class="form-group"><button class="button-secondary" onclick="fetchPoStatus()">조회 <span id="loading-spinner" class="loading-spinner"></span></button></div>
+  </div>
+  
+  <div style="overflow-x: auto;">
+    <table class="data-table">
+      <thead><tr><th>유한품번</th><th>지에스켐 품번</th><th>품명</th><th>총 발주량</th><th>누적 납품량</th><th>PO 잔량</th></tr></thead>
+      <tbody id="po-status-tbody"></tbody>
+      <tfoot id="po-status-tfoot"></tfoot>
+    </table>
+  </div>
+</div>
 
-// [수정 후 코드]
-async function fetchPoStatus() {
-  const spinner = document.getElementById('loading-spinner');
-  spinner.style.display = 'inline-block';
+<script>
+  let poStatusDataStore = [];
+  let areFiltersPopulated = false;
 
-  try {
-    // Netlify Function 경로로 fetch 요청을 보냅니다.
-    const response = await fetch('/netlify/functions/getPoStatus', {
-        method: 'POST', // 필요시 GET, POST 등 메소드 지정
-        body: JSON.stringify(filters) // 필터 정보를 body에 담아 전송
-    });
+  (function initializePage() {
+    fetchPoStatus();
+  })();
 
-    if (!response.ok) { // HTTP 상태 코드로 성공/실패를 명확히 확인
-      throw new Error(`HTTP error! status: ${response.status}`);
+  async function fetchPoStatus() {
+    const spinner = document.getElementById('loading-spinner');
+    spinner.style.display = 'inline-block';
+    
+    const filters = {
+      yuhanPartNo: document.getElementById('pn-filter').value.trim(),
+      category: document.getElementById('category-filter').value || '',
+      businessUnit: document.getElementById('bu-filter').value || ''
+    };
+    const queryParams = new URLSearchParams(filters);
+    
+    try {
+        const response = await fetch(`/.netlify/functions/getOrderStatusDashboardData?${queryParams}`);
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error);
+
+        // API 응답 구조에 맞게 데이터 가공 (총 발주량, 누적 납품량 등은 예시이며, 실제 Airtable 구조에 맞게 계산 필요)
+        poStatusDataStore = data.results.map(item => ({
+            ...item,
+            totalOrdered: item.balance, // 현재 함수는 잔량만 가져오므로, 임시로 동일하게 설정
+            cumulativeDelivered: 0, // 이 값은 별도 로직으로 계산 필요
+        }));
+        
+        if (!areFiltersPopulated) {
+          populateFilters(data.categories, data.businessUnits);
+          areFiltersPopulated = true;
+        }
+        renderPoStatusTable(poStatusDataStore);
+        showMessage('조회가 완료되었습니다.', 'success');
+
+    } catch (err) {
+        showMessage('서버 통신 오류: ' + err.message, 'error');
+    } finally {
+        spinner.style.display = 'none';
     }
+  }
 
-    const data = await response.json(); // 응답을 JSON 형태로 파싱
+  function populateFilters(categories, businessUnits) {
+    const categoryFilter = document.getElementById('category-filter');
+    const buFilter = document.getElementById('bu-filter');
+    
+    buFilter.innerHTML = '<option value="">전체 사업부</option>';
+    if (businessUnits) businessUnits.forEach(bu => buFilter.add(new Option(bu, bu)));
 
-    if (data.error) {
-      showMessage('데이터 조회 오류: ' + data.error, 'error');
+    categoryFilter.innerHTML = '<option value="">전체 카테고리</option>';
+    if (categories) categories.forEach(cat => categoryFilter.add(new Option(cat, cat)));
+  }
+
+  function renderPoStatusTable(data) {
+    const tbody = document.getElementById('po-status-tbody');
+    const tfoot = document.getElementById('po-status-tfoot');
+    tbody.innerHTML = "";
+    tfoot.innerHTML = "";
+
+    if (!data || data.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 20px;">해당 조건의 발주 내역이 없습니다.</td></tr>';
       return;
     }
-    
-    poStatusDataStore = data.results || [];
-    // ... 데이터 처리 로직 (이 부분은 동일) ...
-    renderPoStatusTable(poStatusDataStore);
 
-  } catch (err) {
-    showMessage('서버 통신 오류: ' + err.message, 'error');
-  } finally {
-    spinner.style.display = 'none';
+    const totalBalance = data.reduce((sum, item) => sum + item.balance, 0);
+
+    data.forEach(item => {
+      tbody.insertRow().innerHTML = `
+        <td>${item.itemCode}</td>
+        <td>${item.gskemPN}</td>
+        <td>${item.itemName}</td>
+        <td>${formatNumberWithCommas(item.totalOrdered)}</td>
+        <td>${formatNumberWithCommas(item.cumulativeDelivered)}</td>
+        <td class="balance-cell">${formatNumberWithCommas(item.balance)}</td>`;
+    });
+
+    tfoot.insertRow().innerHTML = `<td colspan="5" style="text-align: center;">PO 잔량 합계</td><td class="balance-cell">${formatNumberWithCommas(totalBalance)}</td>`;
   }
-}
+</script>
