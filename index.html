@@ -104,8 +104,7 @@
 <div class="section-card" id="order-status-section" style="margin-top:2rem;">
   <h2 class="section-title">발주 현황</h2>
   <div class="filter-controls">
-      <div class="form-group"><label for="bu-filter">사업부</label><select id="bu-filter" onchange="fetchOrderStatusData()"></select></div>
-      <div class="form-group"><label for="category-filter">카테고리</label><select id="category-filter" onchange="fetchOrderStatusData()"></select></div>
+      <div class="form-group"><label for="bu-filter">사업부</label><select id="bu-filter"></select></div>
       <div class="form-group"><label for="filterYuhanPartNo">유한품번</label><input type="text" id="filterYuhanPartNo" class="editable" placeholder="품번으로 검색"></div>
       <div class="form-group"><button class="button-secondary" onclick="fetchOrderStatusData()">조회 <span id="filterSpinner" class="loading-spinner"></span></button></div>
   </div>
@@ -117,7 +116,21 @@
     </table>
   </div>
 </div>
-<div id="order-details-modal" class="modal"><div class="modal-content"><div class="modal-header"><h3 id="modal-title">상세 발주 내역</h3><span class="close-button" onclick="closeDetailsModal()">&times;</span></div><div style="overflow-y: auto; max-height: 400px;"><table class="data-table"><thead><tr><th>발주일자</th><th style="text-align:right;">발주수량</th></tr></thead><tbody id="details-tbody"></tbody><tfoot id="details-tfoot"></tfoot></table></div></div></div>
+<div id="order-details-modal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 id="modal-title">상세 발주 내역</h3>
+      <span class="close-button" onclick="closeDetailsModal()">&times;</span>
+    </div>
+    <div style="overflow-y: auto; max-height: 400px;">
+      <table class="data-table">
+        <thead><tr><th>발주일자</th><th style="text-align:right;">발주수량</th></tr></thead>
+        <tbody id="details-tbody"></tbody>
+        <tfoot id="details-tfoot"></tfoot>
+      </table>
+    </div>
+  </div>
+</div>
 
 <script>
   let dashboardDataStore = [];
@@ -236,7 +249,6 @@
     
     const filters = {
       yuhanPartNo: document.getElementById('filterYuhanPartNo').value.trim(),
-      category: document.getElementById('category-filter').value || '',
       businessUnit: document.getElementById('bu-filter').value || ''
     };
     const queryParams = new URLSearchParams(filters);
@@ -248,7 +260,7 @@
 
         dashboardDataStore = data.results;
         if (!areFiltersPopulated) {
-          populateFilters(data.categories, data.businessUnits);
+          populateFilters(data.businessUnits);
           areFiltersPopulated = true;
         }
         renderOrderStatusTable(dashboardDataStore);
@@ -259,12 +271,8 @@
     }
   }
 
-  function populateFilters(categories, businessUnits) {
-    const categoryFilter = document.getElementById('category-filter');
+  function populateFilters(businessUnits) {
     const buFilter = document.getElementById('bu-filter');
-    
-    categoryFilter.innerHTML = '<option value="">전체 카테고리</option>';
-    if (categories) categories.forEach(cat => categoryFilter.add(new Option(cat, cat)));
     buFilter.innerHTML = '<option value="">전체 사업부</option>';
     if (businessUnits) businessUnits.forEach(bu => buFilter.add(new Option(bu, bu)));
   }
