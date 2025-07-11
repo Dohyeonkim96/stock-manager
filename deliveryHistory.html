@@ -9,7 +9,6 @@
 
 <div class="section-card">
   <h1 class="page-main-title">납품 이력 조회</h1>
-  <div id="messageArea" class="message"></div>
   <div class="filter-controls">
     <div class="form-group" style="margin-bottom:0;"><label for="year-filter">년도</label><select id="year-filter"></select></div>
     <div class="form-group" style="margin-bottom:0;"><label for="month-filter">월</label><select id="month-filter"></select></div>
@@ -27,6 +26,7 @@
 <div id="lot-detail-modal" class="modal">
   <div class="modal-content">
       <h2 id="modal-title">상세 내역</h2>
+      <span class="close-button" onclick="closeModal('lot-detail-modal')" style="position: absolute; top: 10px; right: 20px; font-size: 28px; cursor: pointer;">&times;</span>
       <div style="overflow-x: auto;">
         <table class="data-table">
           <thead><tr><th>납품일자</th><th>LOT</th><th>납품수량</th></tr></thead>
@@ -92,7 +92,7 @@
           <td class="number"><span class="clickable-quantity" onclick="showLotDetails('${item.itemCode}')">${formatNumberWithCommas(item.grandTotalQuantity)}</span></td>`;
       });
       tfoot.insertRow().innerHTML = `<td colspan="2" style="text-align: center;">총 합계</td><td class="number">${formatNumberWithCommas(grandTotal)}</td>`;
-      showMessage(`${data.length}개 품목의 이력이 조회되었습니다.`, 'success');
+      // [수정] 조회 완료 팝업 제거
   }
 
   function showLotDetails(itemCode) {
@@ -106,4 +106,6 @@
     });
     document.getElementById('lot-detail-modal').style.display = 'block';
   }
+  
+  function closeModal(id) { document.getElementById(id).style.display = 'none'; }
 </script>
