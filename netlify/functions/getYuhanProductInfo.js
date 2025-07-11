@@ -21,7 +21,7 @@ exports.handler = async function(event, context) {
       '지에스켐품번': records[0].fields['지에스켐 품번'],
       '품명': records[0].fields['품명'],
       '사업부': records[0].fields['사업부'],
-      '카테고리': records[0].fields['분류'], // '분류' 필드를 '카테고리'로 매핑
+      '카테고리': records[0].fields['분류'],
     };
 
     return { statusCode: 200, body: JSON.stringify(productInfo) };
