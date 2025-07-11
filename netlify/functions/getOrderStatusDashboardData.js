@@ -1,63 +1,55 @@
 const Airtable = require('airtable');
-const base = new Airtable({ apiKey: process.env.AIRTABLE_API_KEY }).base(process.env.AIRTABLE_BASE_ID);
 
-const parseNumber = (str) => {
-  if (!str) return 0;
-  return Number(String(str).replace(/,/g, ''));
+// Helper to get product codes based on filters
+const getFilteredProductCodes = async (base, businessUnit, category) => {
+    let formulaParts = [];
+    if (businessUnit && businessUnit !== 'all') {
+        formulaParts.push(`{사업부} = '${businessUnit}'`);
+    }
+    if (category && category !== 'all') {
+        formulaParts.push(`{카테고리} = '${category}'`);
+    }
+
+    if (formulaParts.length === 0) {
+        return null; // No filter, no need to pre-fetch
+    }
+
+    const formula = `AND(${formulaParts.join(', ')})`;
+    const records = await base('기본정보').select({ filterByFormula: formula, fields: ['품번'] }).all();
+    return records.map(record => record.get('품번'));
 };
 
-exports.handler = async function(event, context) {
-  // 'category' 파라미터 수신 부분 제거
-  const { yuhanPartNo, businessUnit } = event.queryStringParameters;
 
-  try {
-    const filterParts = [];
-    if (yuhanPartNo) {
-      filterParts.push(`SEARCH('${yuhanPartNo}', {유한품번})`);
-    }
-    if (businessUnit) {
-      filterParts.push(`{사업부} = '${businessUnit}'`);
-    }
-    // 'category' 필터 생성 로직 제거
-    
-    const filterByFormula = filterParts.length > 0 ? `AND(${filterParts.join(', ')})` : '';
+exports.handler = async (event) => {
+    const { businessUnit, category } = event.queryStringParameters;
+    const base = new Airtable({ apiKey: process.env.AIRTABLE_API_KEY }).base(process.env.AIRTABLE_BASE_ID);
 
-    const records = await base('발주현황').select({ filterByFormula }).all();
-    
-    // '카테고리'를 가져오던 로직 제거
-    const allRecordsForFilters = await base('발주현황').select({ fields: ['사업부'] }).all();
-    const allBusinessUnits = [...new Set(allRecordsForFilters.map(r => r.fields['사업부']).filter(Boolean))];
+    try {
+        const filteredProductCodes = await getFilteredProductCodes(base, businessUnit, category);
 
-    const poByItem = {};
-    records.forEach(r => {
-      const itemCode = r.fields['유한품번'];
-      if (!itemCode) return;
+        const poPromise = base('발주현황').select({ filterByFormula: 'NOT({입고여부})' }).all();
+        const shippingPromise = base('출고요청').select({ filterByFormula: 'NOT({출고여부})' }).all();
+        const inventoryPromise = base('재고조회').select({ filterByFormula: '{현재고} < {안전재고}' }).all();
 
-      if (!poByItem[itemCode]) {
-        poByItem[itemCode] = {
-          itemCode: itemCode,
-          gskemPN: r.fields['지에스켐 품번'],
-          itemName: r.fields['품명'],
-          balance: 0,
-          transactions: []
+        const [poRecords, shippingRecords, inventoryRecords] = await Promise.all([poPromise, shippingPromise, inventoryPromise]);
+        
+        let poPendingCount = poRecords.length;
+        let shippingPendingCount = shippingRecords.length;
+        let lowStockCount = inventoryRecords.length;
+
+        // If filters are active, count only filtered items
+        if (filteredProductCodes) {
+            poPendingCount = poRecords.filter(r => filteredProductCodes.includes(r.get('품번'))).length;
+            shippingPendingCount = shippingRecords.filter(r => filteredProductCodes.includes(r.get('품번'))).length;
+            lowStockCount = inventoryRecords.filter(r => filteredProductCodes.includes(r.get('품번'))).length;
+        }
+
+        return {
+            statusCode: 200,
+            body: JSON.stringify({ poPendingCount, shippingPendingCount, lowStockCount }),
         };
-      }
-      const qty = parseNumber(r.fields['수량']);
-      poByItem[itemCode].balance += qty;
-      poByItem[itemCode].transactions.push({
-        date: r.fields['발주일'],
-        qty: qty
-      });
-    });
 
-    return {
-      statusCode: 200,
-      body: JSON.stringify({
-        results: Object.values(poByItem),
-        businessUnits: allBusinessUnits // categories 키 제거
-      }),
-    };
-  } catch (error) {
-    return { statusCode: 500, body: JSON.stringify({ error: error.message }) };
-  }
+    } catch (error) {
+        return { statusCode: 500, body: JSON.stringify({ message: '대시보드 데이터 조회 실패', error: error.message }) };
+    }
 };
