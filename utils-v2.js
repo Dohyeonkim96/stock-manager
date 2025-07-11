@@ -48,6 +48,132 @@ const deleteAirtableRecord = async (tableName, id) => {
     }
 };
 
+// --- 대시보드 (main.html) ---
+async function initializeDashboard() {
+    const products = await getAirtableRecords('기본정보');
+    populateFilters(products);
+    
+    // 필터 변경 시 대시보드 데이터 다시 로드
+    document.getElementById('business-unit-filter').addEventListener('change', () => loadDashboardData(products));
+    document.getElementById('category-filter').addEventListener('change', () => loadDashboardData(products));
+
+    loadDashboardData(products); // 초기 데이터 로드
+    loadProductionChart();
+}
+
+function populateFilters(products) {
+    const businessUnitFilter = document.getElementById('business-unit-filter');
+    const categoryFilter = document.getElementById('category-filter');
+
+    // 1. 사업부 필터 채우기 (생활유통, OTC 순서)
+    const businessUnits = ['생활유통', 'OTC'];
+    businessUnits.forEach(unit => {
+        const option = document.createElement('option');
+        option.value = unit;
+        option.textContent = unit;
+        businessUnitFilter.appendChild(option);
+    });
+
+    // 2. 카테고리 필터 채우기
+    const categories = [...new Set(products.map(p => p['카테고리']).filter(Boolean))].sort();
+    categories.forEach(cat => {
+        const option = document.createElement('option');
+        option.value = cat;
+        option.textContent = cat;
+        categoryFilter.appendChild(option);
+    });
+}
+
+
+async function loadDashboardData(allProducts) {
+    const selectedBusinessUnit = document.getElementById('business-unit-filter').value;
+    const selectedCategory = document.getElementById('category-filter').value;
+
+    // 선택된 필터에 따라 제품 목록 필터링
+    let filteredProducts = allProducts;
+    if (selectedBusinessUnit !== 'all') {
+        filteredProducts = filteredProducts.filter(p => p['사업부'] === selectedBusinessUnit);
+    }
+    if (selectedCategory !== 'all') {
+        filteredProducts = filteredProducts.filter(p => p['카테고리'] === selectedCategory);
+    }
+    const filteredProductCodes = filteredProducts.map(p => p['품번']);
+
+    // 1. 발주 현황
+    const poStatus = await getAirtableRecords('발주현황', { filterByFormula: "NOT({입고여부})" });
+    const pendingPo = poStatus.filter(p => filteredProductCodes.includes(p['품번']));
+    document.getElementById('po-pending-count').textContent = pendingPo.length;
+    
+    // 2. 출고 요청 현황
+    const shippingRequests = await getAirtableRecords('출고요청', { filterByFormula: "NOT({출고여부})" });
+    const pendingShipping = shippingRequests.filter(s => filteredProductCodes.includes(s['품번']));
+    document.getElementById('shipping-pending-count').textContent = pendingShipping.length;
+
+    // 3. 재고 현황 (안전재고 임박)
+    const inventory = await getAirtableRecords('재고조회');
+    const lowStockItems = inventory.filter(item => 
+        filteredProductCodes.includes(item['품번']) && 
+        (item['현재고'] < item['안전재고'])
+    );
+    document.getElementById('low-stock-count').textContent = lowStockItems.length;
+}
+
+
+async function loadProductionChart() {
+    const plans = await getAirtableRecords('생산계획');
+    const monthlyData = {};
+
+    plans.forEach(plan => {
+        const month = new Date(plan['계획일자']).toISOString().slice(0, 7); // YYYY-MM
+        if (!monthlyData[month]) {
+            monthlyData[month] = { planned: 0, actual: 0 };
+        }
+        monthlyData[month].planned += plan['계획수량'] || 0;
+        if (plan['생산여부']) {
+            monthlyData[month].actual += plan['계획수량'] || 0; // 실제 생산량을 별도 필드 관리 안 할 경우 계획수량으로 대체
+        }
+    });
+
+    const labels = Object.keys(monthlyData).sort();
+    const plannedData = labels.map(m => monthlyData[m].planned);
+    const actualData = labels.map(m => monthlyData[m].actual);
+
+    const ctx = document.getElementById('production-chart')?.getContext('2d');
+    if(ctx) {
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: '계획수량',
+                        data: plannedData,
+                        backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        borderWidth: 1
+                    },
+                    {
+                        label: '생산실적',
+                        data: actualData,
+                        backgroundColor: 'rgba(75, 192, 192, 0.6)',
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 1
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    }
+}
+
 
 // --- 재고 현황 조회 (inventoryLookup.html) ---
 async function loadInventoryData() {
@@ -143,16 +269,16 @@ async function showPlanDetails(recordId) {
     const modalBody = document.getElementById('modal-body-plan');
     if (!modal || !modalBody) return;
 
-    const plan = (await getAirtableRecords('생산계획', { filterByFormula: `RECORD_ID() = '${recordId}'` }))[0];
-    if (!plan) {
+    const records = await getAirtableRecords('생산계획', { filterByFormula: `RECORD_ID() = '${recordId}'` });
+    if (!records || records.length === 0) {
         alert('계획 정보를 찾을 수 없습니다.');
         return;
     }
+    let plan = records[0];
     
     const products = await getAirtableRecords('기본정보');
     const product = products.find(p => p['품번'] === plan['품번']);
 
-    // Display mode
     const displayContent = () => {
         modalBody.innerHTML = `
             <p><strong>계획일자:</strong> ${plan['계획일자'] || ''}</p>
@@ -167,20 +293,19 @@ async function showPlanDetails(recordId) {
         document.getElementById('cancel-edit-btn').style.display = 'none';
     };
 
-    // Edit mode
     const editContent = () => {
         modalBody.innerHTML = `
             <div class="form-group">
                 <label for="edit-plan-date">계획일자</label>
-                <input type="date" id="edit-plan-date" value="${plan['계획일자'] || ''}">
+                <input type="date" id="edit-plan-date" class="form-control" value="${plan['계획일자'] || ''}">
             </div>
             <div class="form-group">
                 <label for="edit-plan-quantity">계획수량</label>
-                <input type="number" id="edit-plan-quantity" value="${plan['계획수량'] || 0}">
+                <input type="number" id="edit-plan-quantity" class="form-control" value="${plan['계획수량'] || 0}">
             </div>
              <div class="form-group">
                 <label for="edit-production-status">생산여부</label>
-                <select id="edit-production-status">
+                <select id="edit-production-status" class="form-control">
                     <option value="true" ${plan['생산여부'] ? 'selected' : ''}>완료</option>
                     <option value="false" ${!plan['생산여부'] ? 'selected' : ''}>미완료</option>
                 </select>
@@ -195,7 +320,6 @@ async function showPlanDetails(recordId) {
     displayContent();
     modal.style.display = 'block';
 
-    // --- Event Listeners for buttons ---
     const editBtn = document.getElementById('edit-plan-btn');
     const deleteBtn = document.getElementById('delete-plan-btn');
     const saveBtn = document.getElementById('save-plan-btn');
@@ -220,10 +344,11 @@ async function showPlanDetails(recordId) {
             '생산여부': document.getElementById('edit-production-status').value === 'true'
         };
 
-        await updateAirtableRecord('생산계획', recordId, updatedFields);
+        const updatedRecord = await updateAirtableRecord('생산계획', recordId, updatedFields);
+        plan = updatedRecord; // 로컬 데이터 업데이트
         alert('계획이 성공적으로 수정되었습니다.');
-        modal.style.display = 'none';
-        loadProductionPlans();
+        displayContent(); // 다시 디스플레이 모드로 전환
+        loadProductionPlans(); // 테이블 새로고침
     };
 
     const closeButton = modal.querySelector('.close-button');
@@ -314,11 +439,17 @@ async function loadDeliveryHistoryData() {
     `).join('');
 }
 
-// 초기화 로직
+// --- 페이지 로드 및 네비게이션 ---
 document.addEventListener('DOMContentLoaded', () => {
     const path = window.location.pathname.split("/").pop();
 
+    // 1. 현재 페이지에 따라 필요한 데이터 로드
     switch (path) {
+        case 'main.html':
+        case 'index.html':
+        case '': // root path
+            initializeDashboard();
+            break;
         case 'poStatus.html':
             loadPoData();
             break;
@@ -338,13 +469,20 @@ document.addEventListener('DOMContentLoaded', () => {
             break;
     }
     
-    // 네비게이션 활성화 상태 업데이트
+    // 2. 네비게이션 활성화 상태 업데이트
     const navLinks = document.querySelectorAll('.sidebar .menu a');
+    let hasActive = false;
     navLinks.forEach(link => {
-        if (link.getAttribute('href') === path) {
+        link.classList.remove('active'); // 모든 링크에서 active 클래스 제거
+        const linkPath = link.getAttribute('href');
+        if (linkPath === path || (path === 'index.html' && linkPath === 'main.html') || (path === '' && linkPath === 'main.html')) {
             link.classList.add('active');
-        } else {
-            link.classList.remove('active');
+            hasActive = true;
         }
     });
+
+    if (!hasActive) {
+        // 기본값으로 main.html 활성화
+        document.querySelector('.sidebar .menu a[href="main.html"]').classList.add('active');
+    }
 });
