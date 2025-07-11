@@ -13,7 +13,6 @@
 
 <div class="section-card">
     <h1 class="page-main-title">출고 요청 확인 및 처리</h1>
-    <div id="messageArea" class="message"></div>
     <div style="overflow-x: auto;">
       <table class="request-table">
         <thead>
@@ -33,19 +32,17 @@
     async function loadPendingShipments() {
       const loadingSpinner = document.getElementById("loading");
       loadingSpinner.style.display = 'inline-block';
-      showMessage('요청 목록을 조회 중입니다...', 'info');
       
       try {
         const response = await fetch(`/.netlify/functions/manageShipmentRequest`);
         const requests = await response.json();
-        if(!response.ok) throw new Error(requests.message);
+        if(!response.ok) throw new Error(requests.message || '데이터 조회 실패');
         
         const tbody = document.getElementById("request-list-tbody");
         tbody.innerHTML = "";
 
         if (requests.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="6">확인 대기 중인 출고 요청이 없습니다.</td></tr>`;
-            showMessage('확인 대기 중인 요청이 없습니다.', 'info');
+            tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;">확인 대기 중인 출고 요청이 없습니다.</td></tr>`;
         } else {
             requests.forEach(req => {
               tbody.insertRow().innerHTML = `
@@ -59,7 +56,6 @@
                   <button class="button button-danger" onclick="handleDelete('${req.rowId}')">삭제</button>
                 </td>`;
             });
-            showMessage(`${requests.length}건의 출고 요청이 있습니다.`, 'success');
         }
       } catch(err) {
         showMessage('조회 오류: ' + err.message, "error");
