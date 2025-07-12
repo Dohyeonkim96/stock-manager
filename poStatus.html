@@ -1,53 +1,109 @@
 <!DOCTYPE html>
 <html lang="ko">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>통합관리 시스템</title>
+    <title>발주 현황</title>
     <link rel="stylesheet" href="styles-v2.css">
 </head>
+
 <body>
     <div class="container">
-        <nav class="sidebar">
-            <div class="logo">
-                <a href="main.html"><h2>통합관리 시스템</h2></a>
-            </div>
-            <ul class="menu">
-                <li><a href="poStatus.html" class="active">발주현황</a></li>
-                <li><a href="stockReceiving.html">입고처리</a></li>
-                <li><a href="inventoryLookup.html">재고현황조회</a></li>
-                <li><a href="productionPlan.html">생산계획관리</a></li>
-                <li><a href="shippingRequest.html">출고요청</a></li>
-                <li><a href="shippingConfirmation.html">출고확정</a></li>
-                <li><a href="deliveryHistory.html">납품이력</a></li>
-            </ul>
-            <div class="footer">
-                <p>통합관리시스템<br>Copyright 2025.<br>김도현 All rights reserved</p>
-            </div>
-        </nav>
-        <main class="main-content">
-            <header>
+        <header>
+            <div class="logo">유한회사 세림</div>
+            <nav>
+                <a href="main.html">홈</a>
+                <a href="poStatus.html" class="active">발주현황</a>
+                <a href="inventoryLookup.html">재고조회</a>
+                <a href="shippingRequest.html">출고요청</a>
+                <a href="deliveryHistory.html">납품이력</a>
+            </nav>
+            <div class="user-info">사용자: 김도현</div>
+        </header>
+
+        <main>
+            <div class="content-header">
                 <h1>발주 현황</h1>
-            </header>
+                <div id="current-date" class="current-date"></div>
+            </div>
             <div class="table-container">
                 <table>
                     <thead>
                         <tr>
-                            <th>발주번호</th>
+                            <th>NO</th>
                             <th>발주일자</th>
-                            <th>품번</th>
+                            <th>품목코드</th>
                             <th>품명</th>
+                            <th>규격</th>
+                            <th>단위</th>
                             <th>발주수량</th>
-                            <th>입고여부</th>
+                            <th>입고수량</th>
+                            <th>미납수량</th>
+                            <th>입고예정일</th>
+                            <th>담당자</th>
+                            <th>진행상황</th>
                         </tr>
                     </thead>
-                    <tbody id="po-table-body">
+                    <tbody id="po-status-table-body">
                         </tbody>
                 </table>
             </div>
         </main>
     </div>
-    <script src="https://cdn.jsdelivr.net/npm/airtable@0.11.6/build/airtable.browser.js"></script>
+
     <script src="utils-v2.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Airtable 설정
+            const baseId = 'appq4lQ9vpBiBdn93';
+            const tableName = '발주현황';
+            const token = 'patE1jSQ92OShRZ6y.610d9d1d8653f6e3671710eba078e7c1063d2e2ddd4f2cbd18a9311c2a49aa4f';
+
+            const tableBody = document.getElementById('po-status-table-body');
+
+            // 오늘 날짜 표시
+            const dateElement = document.getElementById('current-date');
+            const today = new Date();
+            dateElement.textContent = `${today.getFullYear()}년 ${today.getMonth() + 1}월 ${today.getDate()}일`;
+
+            // Airtable 데이터 가져오기
+            fetchData(baseId, tableName, token)
+                .then(records => {
+                    tableBody.innerHTML = ''; // 기존 내용을 비웁니다.
+                    if (records.length === 0) {
+                        const row = `<tr><td colspan="12" style="text-align:center;">데이터가 없습니다.</td></tr>`;
+                        tableBody.innerHTML = row;
+                        return;
+                    }
+                    records.forEach(record => {
+                        const fields = record.fields;
+                        const row = document.createElement('tr');
+                        
+                        // Airtable의 필드 이름에 맞게 수정 (띄어쓰기 추가)
+                        row.innerHTML = `
+                            <td>${fields['NO'] || ''}</td>
+                            <td>${fields['발주 일자'] || ''}</td>
+                            <td>${fields['품목 코드'] || ''}</td>
+                            <td>${fields['품 명'] || ''}</td>
+                            <td>${fields['규 격'] || ''}</td>
+                            <td>${fields['단 위'] || ''}</td>
+                            <td>${fields['발주수량'] || ''}</td>
+                            <td>${fields['입고수량'] || ''}</td>
+                            <td>${fields['미납수량'] || ''}</td>
+                            <td>${fields['입고 예정일'] || ''}</td>
+                            <td>${fields['담당자'] || ''}</td>
+                            <td>${fields['진행상황'] || ''}</td>
+                        `;
+                        tableBody.appendChild(row);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error fetching data:', error);
+                    tableBody.innerHTML = `<tr><td colspan="12" style="text-align:center;">데이터를 불러오는 중 오류가 발생했습니다.</td></tr>`;
+                });
+        });
+    </script>
 </body>
+
 </html>
