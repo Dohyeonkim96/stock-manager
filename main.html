@@ -3,89 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>통합관리 시스템</title>
+    <title>세림 재고관리 시스템</title>
     <link rel="stylesheet" href="styles-v2.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-    <div class="container">
-        <nav class="sidebar">
-            <div class="logo">
-                <a href="main.html"><h2>통합관리 시스템</h2></a>
-            </div>
-            <ul class="menu">
-                <li><a href="poStatus.html">발주현황</a></li>
-                <li><a href="stockReceiving.html">입고처리</a></li>
-                <li><a href="inventoryLookup.html">재고현황조회</a></li>
-                <li><a href="productionPlan.html">생산계획관리</a></li>
-                <li><a href="shippingRequest.html">출고요청</a></li>
-                <li><a href="shippingConfirmation.html">출고확정</a></li>
-                <li><a href="deliveryHistory.html">납품이력</a></li>
-            </ul>
-            <div class="footer">
-                <p>통합관리시스템<br>Copyright 2025.<br>김도현 All rights reserved</p>
-            </div>
-        </nav>
-        <main class="main-content">
-            <header>
-                <h1>대시보드</h1>
-            </header>
+    <div class="container-dashboard">
+        <header class="dashboard-header">
+            <div class="logo">유한회사 세림</div>
+            <div class="user-info"></div>
+        </header>
 
-            <div class="dashboard-filters">
-                <div class="form-group">
-                    <label for="business-unit-filter">사업부</label>
-                    <select id="business-unit-filter">
-                        <option value="all">전체</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="category-filter">카테고리</label>
-                    <select id="category-filter">
-                        <option value="all">전체</option>
-                    </select>
-                </div>
-            </div>
-
-            <div class="dashboard-grid">
-                <div class="dashboard-card">
-                    <h3>발주 현황</h3>
-                    <p id="po-pending-count">0</p>
-                    <span>미입고 건수</span>
-                </div>
-                <div class="dashboard-card">
-                    <h3>출고 요청 현황</h3>
-                    <p id="shipping-pending-count">0</p>
-                    <span>미출고 건수</span>
-                </div>
-                <div class="dashboard-card">
-                    <h3>재고 현황</h3>
-                    <p id="low-stock-count">0</p>
-                    <span>안전재고 임박 품목</span>
-                </div>
-                <div class="dashboard-card chart-card">
-                    <h3>월간 생산 계획 대비 실적</h3>
-                    <canvas id="production-chart"></canvas>
-                </div>
-            </div>
-
-            <div class="table-container">
-                <h2>주요 공지사항</h2>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>작성일</th>
-                            <th>제목</th>
-                            <th>작성자</th>
-                        </tr>
-                    </thead>
-                    <tbody id="notice-table-body">
-                        </tbody>
-                </table>
-            </div>
+        <main class="dashboard-main">
+            <a href="poStatus.html" class="card">
+                <h3>발주 현황</h3>
+                <p>진행중인 발주 내역을 확인하고 관리합니다.</p>
+            </a>
+            <a href="inventoryLookup.html" class="card">
+                <h3>재고 조회</h3>
+                <p>현재 품목별 재고 상태를 실시간으로 조회합니다.</p>
+            </a>
+            <a href="shippingRequest.html" class="card">
+                <h3>출고 요청</h3>
+                <p>제품 출고를 요청하고 처리 상태를 추적합니다.</p>
+            </a>
+            <a href="deliveryHistory.html" class="card">
+                <h3>납품 이력</h3>
+                <p>과거 납품 내역과 상세 정보를 확인합니다.</p>
+            </a>
         </main>
     </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/airtable@0.11.6/build/airtable.browser.js"></script>
+    
     <script src="utils-v2.js"></script>
 </body>
 </html>
