@@ -3,50 +3,56 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>통합관리 시스템</title>
+    <title>납품 이력</title>
     <link rel="stylesheet" href="styles-v2.css">
 </head>
 <body>
     <div class="container">
-        <nav class="sidebar">
-            <div class="logo">
-                <a href="main.html"><h2>통합관리 시스템</h2></a>
-            </div>
-            <ul class="menu">
-                <li><a href="poStatus.html">발주현황</a></li>
-                <li><a href="stockReceiving.html">입고처리</a></li>
-                <li><a href="inventoryLookup.html">재고현황조회</a></li>
-                <li><a href="productionPlan.html">생산계획관리</a></li>
-                <li><a href="shippingRequest.html">출고요청</a></li>
-                <li><a href="shippingConfirmation.html">출고확정</a></li>
-                <li><a href="deliveryHistory.html" class="active">납품이력</a></li>
-            </ul>
-            <div class="footer">
-                <p>통합관리시스템<br>Copyright 2025.<br>김도현 All rights reserved</p>
-            </div>
-        </nav>
-        <main class="main-content">
-            <header>
+        <header>
+            <div class="logo">유한회사 세림</div>
+            <nav>
+                <a href="main.html">홈</a>
+                <a href="poStatus.html">발주현황</a>
+                <a href="inventoryLookup.html">재고조회</a>
+                <a href="shippingRequest.html">출고요청</a>
+                <a href="deliveryHistory.html" class="active">납품이력</a>
+            </nav>
+            <div class="user-info"></div>
+        </header>
+
+        <main>
+            <div class="content-header">
                 <h1>납품 이력</h1>
-            </header>
+                <div id="current-date" class="current-date"></div>
+            </div>
+
+            <div class="search-bar-container">
+                <input type="text" id="search-input" placeholder="품목코드 또는 품명으로 검색">
+                <button id="search-button">조회</button>
+            </div>
+
             <div class="table-container">
                 <table>
                     <thead>
                         <tr>
                             <th>납품일자</th>
-                            <th>출하요청번호</th>
-                            <th>품번</th>
+                            <th>품목코드</th>
                             <th>품명</th>
+                            <th>규격</th>
                             <th>납품수량</th>
+                            <th>납품처</th>
                         </tr>
                     </thead>
-                    <tbody id="delivery-history-table-body">
+                    <tbody id="delivery-history-body">
                         </tbody>
                 </table>
             </div>
         </main>
     </div>
-    <script src="https://cdn.jsdelivr.net/npm/airtable@0.11.6/build/airtable.browser.js"></script>
+
     <script src="utils-v2.js"></script>
+    <script>
+        // Placeholder for delivery history logic
+    </script>
 </body>
 </html>
