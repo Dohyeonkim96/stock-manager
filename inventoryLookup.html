@@ -3,61 +3,111 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>통합관리 시스템</title>
+    <title>재고 조회</title>
     <link rel="stylesheet" href="styles-v2.css">
 </head>
 <body>
     <div class="container">
-        <nav class="sidebar">
-            <div class="logo">
-                <a href="main.html"><h2>통합관리 시스템</h2></a>
+        <header>
+            <div class="logo">유한회사 세림</div>
+            <nav>
+                <a href="main.html">홈</a>
+                <a href="poStatus.html">발주현황</a>
+                <a href="inventoryLookup.html" class="active">재고조회</a>
+                <a href="shippingRequest.html">출고요청</a>
+                <a href="deliveryHistory.html">납품이력</a>
+            </nav>
+            <div class="user-info"></div>
+        </header>
+
+        <main>
+            <div class="content-header">
+                <h1>재고 조회</h1>
+                <div id="current-date" class="current-date"></div>
             </div>
-            <ul class="menu">
-                <li><a href="poStatus.html">발주현황</a></li>
-                <li><a href="stockReceiving.html">입고처리</a></li>
-                <li><a href="inventoryLookup.html" class="active">재고현황조회</a></li>
-                <li><a href="productionPlan.html">생산계획관리</a></li>
-                <li><a href="shippingRequest.html">출고요청</a></li>
-                <li><a href="shippingConfirmation.html">출고확정</a></li>
-                <li><a href="deliveryHistory.html">납품이력</a></li>
-            </ul>
-            <div class="footer">
-                <p>통합관리시스템<br>Copyright 2025.<br>김도현 All rights reserved</p>
+
+            <div class="search-bar-container">
+                <input type="text" id="search-input" placeholder="품목코드 또는 품명으로 검색">
+                <button id="search-button">조회</button>
             </div>
-        </nav>
-        <main class="main-content">
-            <header>
-                <h1>재고 현황 조회</h1>
-            </header>
+
             <div class="table-container">
                 <table>
                     <thead>
                         <tr>
-                            <th>품번</th>
+                            <th>품목코드</th>
                             <th>품명</th>
-                            <th>현재고</th>
+                            <th>규격</th>
                             <th>단위</th>
-                            <th>최근 입고일</th>
+                            <th>현재고</th>
+                            <th>안전재고</th>
+                            <th>상태</th>
                         </tr>
                     </thead>
                     <tbody id="inventory-table-body">
                         </tbody>
                 </table>
             </div>
-            <div id="total-quantity">총 재고 수량: 0</div>
         </main>
     </div>
-
-    <div id="item-details-modal" class="modal">
-        <div class="modal-content">
-            <span class="close-button">&times;</span>
-            <h2>재고 상세 정보</h2>
-            <div id="modal-body"></div>
-            <div id="modal-total-quantity"></div>
-        </div>
-    </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/airtable@0.11.6/build/airtable.browser.js"></script>
+    
     <script src="utils-v2.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const tableBody = document.getElementById('inventory-table-body');
+            const searchInput = document.getElementById('search-input');
+            const searchButton = document.getElementById('search-button');
+            let allInventory = [];
+
+            function renderTable(data) {
+                tableBody.innerHTML = '';
+                if (data.length === 0) {
+                    tableBody.innerHTML = '<tr><td colspan="7" style="text-align:center;">데이터가 없습니다.</td></tr>';
+                    return;
+                }
+                data.forEach(item => {
+                    const fields = item.fields;
+                    const stockStatus = (fields['현재고'] || 0) < (fields['안전재고'] || 0) ? '재고부족' : '정상';
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${fields['품목코드'] || ''}</td>
+                        <td>${fields['품명'] || ''}</td>
+                        <td>${fields['규격'] || ''}</td>
+                        <td>${fields['단위'] || ''}</td>
+                        <td>${fields['현재고'] || 0}</td>
+                        <td>${fields['안전재고'] || 0}</td>
+                        <td style="color: ${stockStatus === '재고부족' ? 'red' : 'green'};">${stockStatus}</td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            }
+
+            fetchFromNetlifyFunction('getInventoryDetails')
+                .then(records => {
+                    allInventory = records;
+                    renderTable(allInventory);
+                })
+                .catch(error => {
+                    console.error('Error fetching inventory data:', error);
+                    tableBody.innerHTML = '<tr><td colspan="7" style="text-align:center;">데이터 로딩 실패</td></tr>';
+                });
+
+            function handleSearch() {
+                const searchTerm = searchInput.value.toLowerCase();
+                const filteredData = allInventory.filter(item => {
+                    return (item.fields['품목코드']?.toLowerCase().includes(searchTerm) ||
+                            item.fields['품명']?.toLowerCase().includes(searchTerm));
+                });
+                renderTable(filteredData);
+            }
+
+            searchButton.addEventListener('click', handleSearch);
+            searchInput.addEventListener('keyup', (event) => {
+                if(event.key === 'Enter') {
+                    handleSearch();
+                }
+            });
+        });
+    </script>
 </body>
 </html>
