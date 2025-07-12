@@ -19,7 +19,7 @@
                 <a href="shippingRequest.html">출고요청</a>
                 <a href="deliveryHistory.html">납품이력</a>
             </nav>
-            <div class="user-info">사용자: 김도현</div>
+            <div class="user-info"></div>
         </header>
 
         <main>
@@ -31,7 +31,6 @@
                 <table>
                     <thead>
                         <tr>
-                            <th>NO</th>
                             <th>발주일자</th>
                             <th>품목코드</th>
                             <th>품명</th>
@@ -55,24 +54,13 @@
     <script src="utils-v2.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            // Airtable 설정
-            const baseId = 'appq4lQ9vpBiBdn93';
-            const tableName = '발주현황';
-            const token = 'patE1jSQ92OShRZ6y.610d9d1d8653f6e3671710eba078e7c1063d2e2ddd4f2cbd18a9311c2a49aa4f';
-
             const tableBody = document.getElementById('po-status-table-body');
 
-            // 오늘 날짜 표시
-            const dateElement = document.getElementById('current-date');
-            const today = new Date();
-            dateElement.textContent = `${today.getFullYear()}년 ${today.getMonth() + 1}월 ${today.getDate()}일`;
-
-            // Airtable 데이터 가져오기
-            fetchData(baseId, tableName, token)
+            fetchFromNetlifyFunction('getPoStatusDetails')
                 .then(records => {
                     tableBody.innerHTML = ''; // 기존 내용을 비웁니다.
                     if (records.length === 0) {
-                        const row = `<tr><td colspan="12" style="text-align:center;">데이터가 없습니다.</td></tr>`;
+                        const row = `<tr><td colspan="11" style="text-align:center;">데이터가 없습니다.</td></tr>`;
                         tableBody.innerHTML = row;
                         return;
                     }
@@ -80,9 +68,8 @@
                         const fields = record.fields;
                         const row = document.createElement('tr');
                         
-                        // Airtable의 필드 이름에 맞게 수정 (띄어쓰기 추가)
+                        // 'NO' 필드를 제외하고 데이터를 바인딩합니다.
                         row.innerHTML = `
-                            <td>${fields['NO'] || ''}</td>
                             <td>${fields['발주 일자'] || ''}</td>
                             <td>${fields['품목 코드'] || ''}</td>
                             <td>${fields['품 명'] || ''}</td>
@@ -100,7 +87,7 @@
                 })
                 .catch(error => {
                     console.error('Error fetching data:', error);
-                    tableBody.innerHTML = `<tr><td colspan="12" style="text-align:center;">데이터를 불러오는 중 오류가 발생했습니다.</td></tr>`;
+                    tableBody.innerHTML = `<tr><td colspan="11" style="text-align:center;">데이터를 불러오는 중 오류가 발생했습니다.</td></tr>`;
                 });
         });
     </script>
