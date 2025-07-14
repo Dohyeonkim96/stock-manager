@@ -97,7 +97,7 @@
                             const row = document.createElement('tr');
                             row.innerHTML = `
                                 <td>${item.fields['생산계획번호'] || ''}</td>
-                                <td>${(item.fields['품목코드'] || [''])[0]}</td>
+                                <td>${(item.fields['품목코드_조회'] || [''])[0]}</td>
                                 <td>${(item.fields['품명'] || [''])[0]}</td>
                                 <td>${item.fields['계획수량'] || ''}</td>
                                 <td>${item.fields['생산예정일'] || ''}</td>
@@ -127,6 +127,7 @@
             itemCodeInput.addEventListener('change', async () => {
                 const itemCode = itemCodeInput.value.trim();
                 selectedItemRecordId = null;
+                itemNameInput.value = '';
                 if (!itemCode) return;
                 try {
                     const response = await fetch(`/.netlify/functions/getInventoryData?query=${itemCode}`);
@@ -145,7 +146,7 @@
             planForm.addEventListener('submit', async (event) => {
                 event.preventDefault();
                 if (!selectedItemRecordId) {
-                    alert('유효한 품목코드를 입력하고 선택해주세요.');
+                    alert('유효한 품목코드를 입력하고 확인해주세요.');
                     return;
                 }
                 const formData = new FormData(planForm);
