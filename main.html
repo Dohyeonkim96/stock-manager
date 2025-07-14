@@ -9,143 +9,75 @@
 </head>
 <body>
     <div class="container">
-        <aside class="sidebar">
-            <div class="sidebar-header">
-                <h2>재고 관리 시스템</h2>
-            </div>
-            <nav class="sidebar-nav">
-                <ul>
-                    <li class="active"><a href="main.html"><i class="fas fa-home"></i> 홈</a></li>
-                    <li><a href="stockReceiving.html"><i class="fas fa-box-open"></i> 입고 관리</a></li>
-                    <li><a href="shippingRequest.html"><i class="fas fa-truck-loading"></i> 출고 요청</a></li>
-                    <li><a href="inventoryLookup.html"><i class="fas fa-search"></i> 재고 조회</a></li>
-                    <li><a href="poStatus.html"><i class="fas fa-file-invoice"></i> 발주 현황</a></li>
-                    <li><a href="productionPlan.html"><i class="fas fa-cogs"></i> 생산 계획</a></li>
-                    <li><a href="deliveryHistory.html"><i class="fas fa-history"></i> 납품 이력</a></li>
-                </ul>
-            </nav>
-        </aside>
+        <aside class="sidebar"></aside>
         <main class="main-content">
             <header class="main-header">
                 <h1>홈 대시보드</h1>
             </header>
-            
             <div id="loader">로딩 중...</div>
-
             <section id="dashboard-content" class="dashboard-grid" style="display: none;">
                 <div class="dashboard-card">
                     <h3>금일 출고 현황</h3>
                     <div class="status-group">
-                        <div class="status-item">
-                            <span class="label">출고 완료</span>
-                            <span id="shipped-count" class="count">0</span>
-                        </div>
-                        <div class="status-item">
-                            <span class="label">미승인</span>
-                            <span id="unapproved-count" class="count">0</span>
-                        </div>
+                        <div class="status-item"><span class="label">출고 완료</span><span id="shipped-count" class="count">0</span></div>
+                        <div class="status-item"><span class="label">미승인</span><span id="unapproved-count" class="count">0</span></div>
                     </div>
                 </div>
-
                 <div class="dashboard-card">
                     <h3>발주 현황</h3>
                      <div class="status-group">
-                        <div class="status-item">
-                            <span class="label">입고완료</span>
-                            <span id="received-po-count" class="count">0</span>
-                        </div>
-                        <div class="status-item">
-                            <span class="label">입고예정</span>
-                            <span id="pending-po-count" class="count">0</span>
-                        </div>
+                        <div class="status-item"><span class="label">입고완료</span><span id="received-po-count" class="count">0</span></div>
+                        <div class="status-item"><span class="label">입고예정</span><span id="pending-po-count" class="count">0</span></div>
                     </div>
                 </div>
-
                 <div class="dashboard-card full-width">
                     <h3>주간 생산 계획</h3>
                     <table class="dashboard-table">
-                        <thead>
-                            <tr>
-                                <th>제품명</th>
-                                <th>계획수량</th>
-                                <th>생산수량</th>
-                            </tr>
-                        </thead>
-                        <tbody id="production-plan-body">
-                            </tbody>
+                        <thead><tr><th>제품명</th><th>계획수량</th><th>생산수량</th></tr></thead>
+                        <tbody id="production-plan-body"></tbody>
                     </table>
                 </div>
-
                 <div class="dashboard-card full-width">
                     <h3>주간 출고 계획</h3>
                     <table class="dashboard-table">
-                        <thead>
-                            <tr>
-                                <th>제품명</th>
-                                <th>요청수량</th>
-                                <th>출고수량</th>
-                            </tr>
-                        </thead>
-                        <tbody id="shipping-plan-body">
-                            </tbody>
+                        <thead><tr><th>제품명</th><th>요청수량</th><th>출고수량</th></tr></thead>
+                        <tbody id="shipping-plan-body"></tbody>
                     </table>
                 </div>
             </section>
         </main>
     </div>
-
+    <script src="utils-v2.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
+            loadSidebar('main.html');
             const loader = document.getElementById('loader');
             const dashboardContent = document.getElementById('dashboard-content');
-
             try {
                 const response = await fetch('/.netlify/functions/getDashboardData');
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                 const data = await response.json();
-
-                // Populate Dashboard
                 document.getElementById('shipped-count').textContent = data.shippingStatus.shipped;
                 document.getElementById('unapproved-count').textContent = data.shippingStatus.pending;
-                
                 document.getElementById('received-po-count').textContent = data.poStatus.received;
                 document.getElementById('pending-po-count').textContent = data.poStatus.pending;
-
-                const productionBody = document.getElementById('production-plan-body');
-                productionBody.innerHTML = ''; // Clear existing
-                if (data.weeklyProduction.length > 0) {
-                    data.weeklyProduction.forEach(item => {
-                        const row = `<tr>
-                            <td>${item['제품명'] || 'N/A'}</td>
-                            <td>${item['계획수량'] || 0}</td>
-                            <td>${item['생산수량'] || 0}</td>
-                        </tr>`;
-                        productionBody.innerHTML += row;
-                    });
-                } else {
-                    productionBody.innerHTML = '<tr><td colspan="3" style="text-align:center;">데이터가 없습니다.</td></tr>';
-                }
-
-                const shippingBody = document.getElementById('shipping-plan-body');
-                shippingBody.innerHTML = ''; // Clear existing
-                 if (data.weeklyShipping.length > 0) {
-                    data.weeklyShipping.forEach(item => {
-                        const row = `<tr>
-                            <td>${item['제품명'] || 'N/A'}</td>
-                            <td>${item['요청수량'] || 0}</td>
-                            <td>${item['출고수량'] || 0}</td>
-                        </tr>`;
-                        shippingBody.innerHTML += row;
-                    });
-                } else {
-                    shippingBody.innerHTML = '<tr><td colspan="3" style="text-align:center;">데이터가 없습니다.</td></tr>';
-                }
-
+                const renderTable = (tbodyId, data, columns) => {
+                    const tbody = document.getElementById(tbodyId);
+                    tbody.innerHTML = '';
+                    if (data.length > 0) {
+                        data.forEach(item => {
+                            const row = document.createElement('tr');
+                            row.innerHTML = columns.map(col => `<td>${item[col.field] || col.default}</td>`).join('');
+                            tbody.appendChild(row);
+                        });
+                    } else {
+                        tbody.innerHTML = `<tr><td colspan="${columns.length}" style="text-align:center;">데이터가 없습니다.</td></tr>`;
+                    }
+                };
+                renderTable('production-plan-body', data.weeklyProduction, [{field: '제품명', default: 'N/A'}, {field: '계획수량', default: 0}, {field: '생산수량', default: 0}]);
+                renderTable('shipping-plan-body', data.weeklyShipping, [{field: '제품명', default: 'N/A'}, {field: '요청수량', default: 0}, {field: '출고수량', default: 0}]);
                 loader.style.display = 'none';
                 dashboardContent.style.display = 'grid';
-
             } catch (error) {
                 console.error('Failed to load dashboard data:', error);
                 loader.textContent = '데이터를 불러오는 데 실패했습니다.';
