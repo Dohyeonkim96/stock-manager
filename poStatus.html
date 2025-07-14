@@ -82,7 +82,6 @@
             const itemCodeInput = poForm.querySelector('#itemCode');
             const itemNameInput = poForm.querySelector('#itemName');
             
-            // 선택된 품목의 레코드 ID를 저장할 변수
             let selectedItemRecordId = null;
 
             function fetchPoStatus() {
@@ -99,8 +98,8 @@
                             const row = document.createElement('tr');
                             row.innerHTML = `
                                 <td>${item.fields['발주번호'] || ''}</td>
-                                <td>${(item.fields['품목코드'] || [''])[0]}</td>
-                                <td>${(item.fields['품명'] || [''])[0]}</td>
+                                <td>${(item.fields['품목코드_조회'] || [''])[0]}</td>
+                                <td>${(item.fields['품명_조회'] || [''])[0]}</td>
                                 <td>${item.fields['수량'] || ''}</td>
                                 <td>${item.fields['단위'] || ''}</td>
                                 <td>${item.fields['발주일자'] || ''}</td>
@@ -121,7 +120,7 @@
             function closeModal() {
                 poModal.style.display = 'none';
                 poForm.reset();
-                selectedItemRecordId = null; // 모달 닫을 때 초기화
+                selectedItemRecordId = null;
             }
 
             createPoBtn.addEventListener('click', openModal);
@@ -129,7 +128,7 @@
 
             itemCodeInput.addEventListener('change', async () => {
                 const itemCode = itemCodeInput.value.trim();
-                selectedItemRecordId = null; // 조회 전 초기화
+                selectedItemRecordId = null;
                 if (!itemCode) return;
                 try {
                     const response = await fetch(`/.netlify/functions/getInventoryData?query=${itemCode}`);
