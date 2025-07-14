@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>재고조회 - 통합 재고관리 시스템</title>
-    <link rel="stylesheet" href="styles-v2.css">
+    <link rel="stylesheet" href="/styles-v2.css">
     <script src="https://kit.fontawesome.com/a2309d579f.js" crossorigin="anonymous"></script>
 </head>
 <body>
@@ -43,17 +43,15 @@
             </div>
         </main>
     </div>
-    <script src="utils-v2.js"></script>
+    <script src="/utils-v2.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            // 네비게이션 로드
             loadNavigation('inventoryLookup');
 
             const searchForm = document.getElementById('searchForm');
             const itemQueryInput = document.getElementById('itemQuery');
             const tableBody = document.querySelector('#inventoryTable tbody');
 
-            // 재고 조회 함수
             function fetchInventory(query = '') {
                 showLoading('inventoryTable');
                 const url = `/.netlify/functions/getInventoryData?query=${encodeURIComponent(query)}`;
@@ -96,10 +94,8 @@
                     });
             }
 
-            // 초기 데이터 로드
             fetchInventory();
 
-            // 검색 폼 제출 이벤트
             searchForm.addEventListener('submit', function (event) {
                 event.preventDefault();
                 fetchInventory(itemQueryInput.value.trim());
