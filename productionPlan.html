@@ -11,34 +11,14 @@
     <div class="container">
         <aside class="sidebar" id="sidebar"></aside>
         <main class="main-content">
-            <header>
+            <header style="position: relative;">
                 <h1>생산 계획 관리</h1>
+                <div class="header-actions">
+                    <button id="createPlanBtn" class="btn btn-primary">생산지시 생성</button>
+                </div>
             </header>
 
-            <div class="form-container card">
-                <form id="planForm">
-                    <div class="form-group">
-                        <label for="itemCode">품목코드</label>
-                        <input type="text" id="itemCode" placeholder="품목코드 입력" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="itemName">품명</label>
-                        <input type="text" id="itemName" readonly>
-                    </div>
-                    <div class="form-group">
-                        <label for="planQuantity">계획수량</label>
-                        <input type="number" id="planQuantity" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="planDate">생산예정일</label>
-                        <input type="date" id="planDate" required>
-                    </div>
-                    <button type="submit" class="btn btn-primary">계획 추가</button>
-                </form>
-            </div>
-
             <div class="table-container card">
-                <h2>생산 계획 목록</h2>
                 <table id="planTable">
                     <thead>
                         <tr>
@@ -57,73 +37,62 @@
         </main>
     </div>
 
+    <div id="planModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>생산지시 생성</h2>
+                <button id="closePlanModalBtn" class="close-button">&times;</button>
+            </div>
+            <form id="planForm">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="planDate">생산예정일</label>
+                        <input type="date" id="planDate" name="planDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="itemCode">품목코드</label>
+                        <input type="text" id="itemCode" name="itemCode" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="itemName">품명</label>
+                        <input type="text" id="itemName" name="itemName" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label for="planQuantity">계획수량</label>
+                        <input type="number" id="planQuantity" name="planQuantity" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">생성</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script src="/utils-v2.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             loadNavigation('productionPlan');
 
-            const itemCodeInput = document.getElementById('itemCode');
-            const itemNameInput = document.getElementById('itemName');
+            const tableBody = document.querySelector('#planTable tbody');
+            const planModal = document.getElementById('planModal');
+            const createPlanBtn = document.getElementById('createPlanBtn');
+            const closePlanModalBtn = document.getElementById('closePlanModalBtn');
             const planForm = document.getElementById('planForm');
             const planDateInput = document.getElementById('planDate');
-            const planTableBody = document.querySelector('#planTable tbody');
+            const itemCodeInput = planForm.querySelector('#itemCode');
+            const itemNameInput = planForm.querySelector('#itemName');
 
-            itemCodeInput.addEventListener('change', async () => {
-                const itemCode = itemCodeInput.value.trim();
-                if (!itemCode) return;
-
-                try {
-                    const response = await fetch(`/.netlify/functions/getInventoryData?query=${itemCode}`);
-                    const data = await response.json();
-
-                    if (data && data.length > 0) {
-                        itemNameInput.value = data[0].fields['품명'] || '';
-                    } else {
-                        alert('존재하지 않는 품목코드입니다.');
-                        itemNameInput.value = '';
-                    }
-                } catch (error) {
-                    console.error('품목 정보 조회 실패:', error);
-                    alert('품목 정보를 가져오는 데 실패했습니다.');
-                }
-            });
-
-            planForm.addEventListener('submit', async (event) => {
-                event.preventDefault();
-                const planData = {
-                    itemCode: itemCodeInput.value,
-                    itemName: itemNameInput.value,
-                    quantity: document.getElementById('planQuantity').value,
-                    planDate: planDateInput.value,
-                };
-
-                try {
-                    const response = await fetch('/.netlify/functions/createProductionPlan', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(planData),
-                    });
-
-                    if (response.ok) {
-                        alert('생산 계획이 추가되었습니다.');
-                        planForm.reset();
-                        fetchProductionPlans();
-                    } else {
-                        const error = await response.json();
-                        throw new Error(error.message || '생산 계획 추가 실패');
-                    }
-                } catch (error) {
-                    console.error('생산 계획 추가 오류:', error);
-                    alert(`오류 발생: ${error.message}`);
-                }
-            });
-
+            // --- 데이터 조회 기능 ---
             function fetchProductionPlans() {
                 showLoading('planTable');
                 fetch('/.netlify/functions/getProductionPlans')
-                    .then(response => response.json())
+                    .then(response => {
+                        if (!response.ok) throw new Error('서버 응답 실패');
+                        return response.json();
+                    })
                     .then(data => {
-                        planTableBody.innerHTML = '';
+                        tableBody.innerHTML = '';
                         if (data.length === 0) {
                             showMessage('planTable', '등록된 생산 계획이 없습니다.');
                             return;
@@ -138,7 +107,7 @@
                                 <td>${item.fields['생산예정일'] || ''}</td>
                                 <td>${item.fields['상태'] || ''}</td>
                             `;
-                            planTableBody.appendChild(row);
+                            tableBody.appendChild(row);
                         });
                     })
                     .catch(error => {
@@ -146,6 +115,65 @@
                         showMessage('planTable', '데이터를 불러오는 중 오류가 발생했습니다.');
                     });
             }
+
+            // --- 모달 관리 기능 ---
+            function openModal() {
+                planDateInput.valueAsDate = new Date();
+                planModal.style.display = 'flex';
+            }
+            function closeModal() {
+                planModal.style.display = 'none';
+                planForm.reset();
+            }
+
+            createPlanBtn.addEventListener('click', openModal);
+            closePlanModalBtn.addEventListener('click', closeModal);
+            planModal.addEventListener('click', (event) => {
+                if (event.target === planModal) closeModal();
+            });
+
+            // --- 품목코드 입력 시 품명 자동 완성 ---
+            itemCodeInput.addEventListener('change', async () => {
+                const itemCode = itemCodeInput.value.trim();
+                if (!itemCode) return;
+                try {
+                    const response = await fetch(`/.netlify/functions/getInventoryData?query=${itemCode}`);
+                    const data = await response.json();
+                    if (data && data.length > 0) {
+                        itemNameInput.value = data[0].fields['품명'] || '';
+                    } else {
+                        itemNameInput.value = '해당 품목 없음';
+                    }
+                } catch (error) {
+                    itemNameInput.value = '조회 실패';
+                }
+            });
+
+            // --- 생산지시 생성 폼 제출 ---
+            planForm.addEventListener('submit', async (event) => {
+                event.preventDefault();
+                const formData = new FormData(planForm);
+                const planData = {
+                    '생산예정일': formData.get('planDate'),
+                    '품목코드': formData.get('itemCode'),
+                    '품명': itemNameInput.value,
+                    '계획수량': parseInt(formData.get('planQuantity'), 10),
+                    '상태': '계획완료'
+                };
+                
+                try {
+                    const response = await fetch('/.netlify/functions/createProductionOrder', {
+                        method: 'POST',
+                        body: JSON.stringify(planData)
+                    });
+                    if (!response.ok) throw new Error('생산지시 생성 실패');
+                    alert('생산지시가 성공적으로 생성되었습니다.');
+                    closeModal();
+                    fetchProductionPlans();
+                } catch (error) {
+                    alert('오류가 발생했습니다: ' + error.message);
+                }
+            });
 
             fetchProductionPlans();
         });
