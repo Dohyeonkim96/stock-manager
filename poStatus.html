@@ -77,7 +77,7 @@
             loadNavigation('poStatus');
 
             const tableBody = document.querySelector('#poTable tbody');
-            const poModal = document.getElementById('poModal');
+            const poModal = document.getElementById('poModal'); // 이 변수가 null이었습니다.
             const createPoBtn = document.getElementById('createPoBtn');
             const closePoModalBtn = document.getElementById('closePoModalBtn');
             const poForm = document.getElementById('poForm');
@@ -85,17 +85,13 @@
             const itemCodeInput = poForm.querySelector('#itemCode');
             const itemNameInput = poForm.querySelector('#itemName');
 
-            // --- 데이터 조회 기능 ---
             function fetchPoStatus() {
                 showLoading('poTable');
                 fetch('/.netlify/functions/getPoStatusDetails')
-                    .then(response => {
-                        if (!response.ok) throw new Error('서버 응답 실패');
-                        return response.json();
-                    })
+                    .then(response => response.json())
                     .then(data => {
                         tableBody.innerHTML = '';
-                        if (data.length === 0) {
+                        if (!data || data.length === 0) {
                             showMessage('poTable', '표시할 발주 데이터가 없습니다.');
                             return;
                         }
@@ -120,10 +116,9 @@
                     });
             }
 
-            // --- 모달 관리 기능 ---
             function openModal() {
-                poDateInput.valueAsDate = new Date(); // 오늘 날짜 기본값
-                poModal.style.display = 'flex';
+                poDateInput.valueAsDate = new Date();
+                poModal.style.display = 'flex'; // 여기서 오류 발생
             }
 
             function closeModal() {
@@ -137,12 +132,10 @@
                 if (event.target === poModal) closeModal();
             });
 
-            // --- 품목코드 입력 시 품명 자동 완성 ---
             itemCodeInput.addEventListener('change', async () => {
                 const itemCode = itemCodeInput.value.trim();
                 if (!itemCode) return;
                 try {
-                    // 품목 정보를 가져오는 함수 (예: getInventoryData)
                     const response = await fetch(`/.netlify/functions/getInventoryData?query=${itemCode}`);
                     const data = await response.json();
                     if (data && data.length > 0) {
@@ -151,12 +144,10 @@
                         itemNameInput.value = '해당 품목 없음';
                     }
                 } catch (error) {
-                    console.error('품목 정보 조회 실패:', error);
                     itemNameInput.value = '조회 실패';
                 }
             });
 
-            // --- 발주서 생성 폼 제출 ---
             poForm.addEventListener('submit', async (event) => {
                 event.preventDefault();
                 const formData = new FormData(poForm);
@@ -165,7 +156,6 @@
                     '품목코드': formData.get('itemCode'),
                     '품명': itemNameInput.value,
                     '수량': parseInt(formData.get('quantity'), 10),
-                    // 기본값 설정
                     '상태': '발주완료'
                 };
                 
@@ -177,14 +167,12 @@
                     if (!response.ok) throw new Error('발주서 생성 실패');
                     alert('발주서가 성공적으로 생성되었습니다.');
                     closeModal();
-                    fetchPoStatus(); // 목록 새로고침
+                    fetchPoStatus();
                 } catch (error) {
-                    console.error('Error:', error);
                     alert('오류가 발생했습니다: ' + error.message);
                 }
             });
 
-            // --- 초기 데이터 로드 ---
             fetchPoStatus();
         });
     </script>
