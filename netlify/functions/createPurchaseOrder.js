@@ -13,8 +13,11 @@ exports.handler = async (event) => {
             headers: { 'Authorization': `Bearer ${AIRTABLE_API_KEY}`, 'Content-Type': 'application/json' },
             body: JSON.stringify(airtableRequest)
         });
-        if (!response.ok) throw new Error(`Airtable 응답 실패: ${response.status}`);
-        const data = await response.json();
+
+        const responseText = await response.text();
+        if (!response.ok) throw new Error(`Airtable 응답 실패: ${response.status} ${responseText}`);
+        
+        const data = JSON.parse(responseText);
         return { statusCode: 200, body: JSON.stringify(data) };
     } catch (error) {
         return { statusCode: 500, body: JSON.stringify({ message: error.message }) };
