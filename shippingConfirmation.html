@@ -3,85 +3,120 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>재고 관리 시스템 - 출고 승인</title>
+    <title>출고확정 - 통합 재고관리 시스템</title>
     <link rel="stylesheet" href="styles-v2.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://kit.fontawesome.com/a2309d579f.js" crossorigin="anonymous"></script>
 </head>
 <body>
     <div class="container">
-        <aside class="sidebar"></aside>
+        <aside class="sidebar" id="sidebar"></aside>
         <main class="main-content">
-            <header class="main-header"><h1>출고 요청 승인</h1></header>
-            <div class="content-box">
-                <table class="data-table">
-                    <thead><tr><th>요청일</th><th>제품명</th><th>요청수량</th><th>현재고</th><th>거래처</th><th>상태</th><th>처리</th></tr></thead>
-                    <tbody id="confirmation-table-body"><tr><td colspan="7" class="loading-row">로딩 중...</td></tr></tbody>
+            <header>
+                <h1>출고 확정</h1>
+            </header>
+
+            <div class="table-container card">
+                <h2>출고 대기 목록</h2>
+                <table id="confirmationTable">
+                    <thead>
+                        <tr>
+                            <th>요청번호</th>
+                            <th>품목코드</th>
+                            <th>품명</th>
+                            <th>요청수량</th>
+                            <th>요청일</th>
+                            <th>상태</th>
+                            <th>작업</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        </tbody>
                 </table>
             </div>
         </main>
     </div>
+
     <script src="utils-v2.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            loadSidebar('shippingConfirmation.html');
-            loadActionableRequests();
-        });
-        async function loadActionableRequests() {
-            const tableBody = document.getElementById('confirmation-table-body');
-            tableBody.innerHTML = '<tr><td colspan="7" class="loading-row">로딩 중...</td></tr>';
-            try {
-                const response = await fetch('/.netlify/functions/getShippingSummary?status=출고요청');
-                if (!response.ok) throw new Error('Network response was not ok');
-                const requests = await response.json();
-                tableBody.innerHTML = '';
-                if (requests.length === 0) {
-                    tableBody.innerHTML = '<tr><td colspan="7" class="no-data-row">처리할 출고 요청이 없습니다.</td></tr>';
-                    return;
+        document.addEventListener('DOMContentLoaded', function () {
+            // 네비게이션 로드
+            loadNavigation('shippingConfirmation');
+
+            const tableBody = document.querySelector('#confirmationTable tbody');
+
+            // 출고 대기 목록 조회 함수
+            function fetchPendingShipments() {
+                showLoading('confirmationTable');
+                // '요청' 상태인 데이터만 가져오도록 쿼리 파라미터 추가
+                fetch('/.netlify/functions/getShippingRequests?status=요청')
+                    .then(response => response.json())
+                    .then(data => {
+                        tableBody.innerHTML = '';
+                        if (data.length === 0) {
+                            showMessage('confirmationTable', '출고 대기 중인 항목이 없습니다.');
+                            return;
+                        }
+                        data.forEach(item => {
+                            const row = document.createElement('tr');
+                            // Airtable 레코드 ID를 버튼에 데이터 속성으로 저장
+                            row.dataset.recordId = item.id;
+                            row.innerHTML = `
+                                <td>${item.fields['요청번호'] || ''}</td>
+                                <td>${item.fields['품목코드'] || ''}</td>
+                                <td>${item.fields['품명'] || ''}</td>
+                                <td>${item.fields['요청수량'] || ''}</td>
+                                <td>${item.fields['요청일'] || ''}</td>
+                                <td><span style="color: orange;">${item.fields['상태'] || ''}</span></td>
+                                <td><button class="btn btn-primary btn-sm confirm-btn">확정</button></td>
+                            `;
+                            tableBody.appendChild(row);
+                        });
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        showMessage('confirmationTable', '데이터를 불러오는 중 오류가 발생했습니다.');
+                    });
+            }
+
+            // 테이블 내의 '확정' 버튼 클릭 이벤트 처리 (이벤트 위임)
+            tableBody.addEventListener('click', async (event) => {
+                if (event.target.classList.contains('confirm-btn')) {
+                    const row = event.target.closest('tr');
+                    const recordId = row.dataset.recordId;
+                    
+                    if (!confirm('해당 항목을 출고 확정하시겠습니까?')) {
+                        return;
+                    }
+
+                    try {
+                        const response = await fetch('/.netlify/functions/confirmShipment', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ recordId: recordId })
+                        });
+
+                        if (response.ok) {
+                            alert('출고 확정 처리되었습니다.');
+                            // 성공적으로 처리된 행을 테이블에서 제거
+                            row.remove();
+                            // 만약 테이블에 남은 항목이 없다면 메시지 표시
+                            if (tableBody.rows.length === 0) {
+                                showMessage('confirmationTable', '출고 대기 중인 항목이 없습니다.');
+                            }
+                        } else {
+                             const error = await response.json();
+                             throw new Error(error.message || '출고 확정 실패');
+                        }
+                    } catch (error) {
+                         console.error('출고 확정 오류:', error);
+                         alert(`오류 발생: ${error.message}`);
+                    }
                 }
-                requests.sort((a, b) => new Date(a['출고 요청일']) - new Date(b['출고 요청일']));
-                requests.forEach(req => {
-                    const currentStock = req['현재고']?.[0] || 0;
-                    const canFulfill = currentStock >= (req['요청수량'] || 0);
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td>${req['출고 요청일'] || ''}</td>
-                        <td>${req['제품명']?.[0] || ''}</td>
-                        <td>${req['요청수량'] || 0}</td>
-                        <td>${currentStock}</td>
-                        <td>${req['거래처명'] || ''}</td>
-                        <td><span class="status-requested">${req['상태']}</span></td>
-                        <td>
-                            <button class="action-btn btn-confirm" onclick="handleAction('${req.id}', 'confirm', this)" ${!canFulfill ? 'disabled title="재고 부족"' : ''}>승인</button>
-                            <button class="action-btn btn-cancel" onclick="handleAction('${req.id}', 'cancel', this)">취소</button>
-                        </td>`;
-                    tableBody.appendChild(row);
-                });
-            } catch (error) {
-                console.error('Error fetching requests:', error);
-                tableBody.innerHTML = '<tr><td colspan="7" class="error-row">데이터를 불러오는 데 실패했습니다.</td></tr>';
-            }
-        }
-        async function handleAction(requestId, action, button) {
-            const actionText = action === 'confirm' ? '승인' : '취소';
-            if (!confirm(`이 요청을 '${actionText}' 처리하시겠습니까?`)) return;
-            const buttons = button.parentElement.querySelectorAll('button');
-            buttons.forEach(btn => btn.disabled = true);
-            try {
-                const response = await fetch('/.netlify/functions/manageShipmentRequest', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ requestId, action })
-                });
-                const result = await response.json();
-                if (!response.ok) throw new Error(result.error || '처리 중 오류가 발생했습니다.');
-                alert(`요청이 성공적으로 ${actionText} 처리되었습니다.`);
-                loadActionableRequests();
-            } catch (error) {
-                console.error(`Error processing action ${action}:`, error);
-                alert(`오류: ${error.message}`);
-                buttons.forEach(btn => btn.disabled = false);
-            }
-        }
+            });
+
+            // 페이지 로드 시 출고 대기 목록 조회
+            fetchPendingShipments();
+        });
     </script>
 </body>
 </html>
