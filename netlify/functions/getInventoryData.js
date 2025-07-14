@@ -1,16 +1,20 @@
 const Airtable = require('airtable');
 
 const base = new Airtable({ apiKey: process.env.AIRTABLE_API_KEY }).base(process.env.AIRTABLE_BASE_ID);
-const table = base('기본정보'); // '기본정보' 테이블 사용
 
 exports.handler = async (event, context) => {
+    if (event.httpMethod !== 'GET') {
+        return { statusCode: 405, body: 'Method Not Allowed' };
+    }
+
     try {
         const { query } = event.queryStringParameters;
+        const table = base('기본정보'); // 1. 테이블 먼저 선택
+        
         let options = {
             sort: [{ field: '품목코드', direction: 'asc' }]
         };
 
-        // 검색 쿼리가 있는 경우 필터 추가
         if (query) {
             options.filterByFormula = `OR(
                 SEARCH("${query}", {품목코드}),
@@ -18,7 +22,7 @@ exports.handler = async (event, context) => {
             )`;
         }
 
-        const records = await table.select(options).firstPage();
+        const records = await table.select(options).firstPage(); // 2. 선택된 테이블에서 데이터 요청
 
         const data = records.map(record => ({
             id: record.id,
