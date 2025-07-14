@@ -3,86 +3,168 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>재고 관리 시스템 - 입고 관리</title>
+    <title>입고관리 - 통합 재고관리 시스템</title>
     <link rel="stylesheet" href="styles-v2.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://kit.fontawesome.com/a2309d579f.js" crossorigin="anonymous"></script>
 </head>
 <body>
     <div class="container">
-        <aside class="sidebar"></aside>
+        <aside class="sidebar" id="sidebar"></aside>
         <main class="main-content">
-            <header class="main-header"><h1>입고 관리</h1></header>
-            <div class="content-box">
-                <table class="data-table">
+            <header>
+                <h1>입고 관리</h1>
+            </header>
+
+            <div class="form-container card">
+                <form id="receivingForm">
+                    <div class="form-group">
+                        <label for="poNumber">발주번호</label>
+                        <input type="text" id="poNumber" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="itemCode">품목코드</label>
+                        <input type="text" id="itemCode" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label for="itemName">품명</label>
+                        <input type="text" id="itemName" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label for="quantity">입고수량</label>
+                        <input type="number" id="quantity" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="receivingDate">입고일</label>
+                        <input type="date" id="receivingDate" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">입고 처리</button>
+                </form>
+            </div>
+
+             <div class="table-container card">
+                <h2>최근 입고 내역</h2>
+                <table id="recentReceivingTable">
                     <thead>
-                        <tr><th>발주일자</th><th>품명</th><th>발주수량</th><th>단가</th><th>공급가액</th><th>상태</th><th>입고 처리</th></tr>
+                        <tr>
+                            <th>발주번호</th>
+                            <th>품목코드</th>
+                            <th>품명</th>
+                            <th>수량</th>
+                            <th>입고일</th>
+                        </tr>
                     </thead>
-                    <tbody id="po-table-body">
-                        <tr><td colspan="7" class="loading-row">로딩 중...</td></tr>
-                    </tbody>
+                    <tbody>
+                        </tbody>
                 </table>
             </div>
         </main>
     </div>
     <script src="utils-v2.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            loadSidebar('stockReceiving.html');
-            fetchPurchaseOrders();
+        document.addEventListener('DOMContentLoaded', function () {
+            // 네비게이션 로드
+            loadNavigation('stockReceiving');
+
+            const poNumberInput = document.getElementById('poNumber');
+            const itemCodeInput = document.getElementById('itemCode');
+            const itemNameInput = document.getElementById('itemName');
+            const receivingForm = document.getElementById('receivingForm');
+            const receivingDateInput = document.getElementById('receivingDate');
+            const recentTableBody = document.querySelector('#recentReceivingTable tbody');
+
+            // 오늘 날짜를 기본값으로 설정
+            receivingDateInput.valueAsDate = new Date();
+
+            // 발주번호 입력 시 발주 정보 자동 완성
+            poNumberInput.addEventListener('blur', async () => {
+                const poNumber = poNumberInput.value.trim();
+                if (!poNumber) return;
+
+                try {
+                    const response = await fetch(`/.netlify/functions/getPoStatusDetails?poNumber=${poNumber}`);
+                    const data = await response.json();
+                    
+                    if (data && data.length > 0) {
+                        const item = data[0].fields;
+                        itemCodeInput.value = item['품목코드'] || '';
+                        itemNameInput.value = item['품명'] || '';
+                    } else {
+                        alert('해당 발주번호를 찾을 수 없습니다.');
+                        itemCodeInput.value = '';
+                        itemNameInput.value = '';
+                    }
+                } catch (error) {
+                    console.error('발주 정보 조회 실패:', error);
+                    alert('발주 정보를 가져오는 데 실패했습니다.');
+                }
+            });
+
+            // 입고 처리 폼 제출
+            receivingForm.addEventListener('submit', async (event) => {
+                event.preventDefault();
+
+                const receivingData = {
+                    poNumber: poNumberInput.value,
+                    itemCode: itemCodeInput.value,
+                    itemName: itemNameInput.value,
+                    quantity: document.getElementById('quantity').value,
+                    receivingDate: receivingDateInput.value
+                };
+
+                try {
+                    const response = await fetch('/.netlify/functions/createStockReceiving', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(receivingData)
+                    });
+
+                    if (response.ok) {
+                        alert('입고 처리가 완료되었습니다.');
+                        receivingForm.reset();
+                        receivingDateInput.valueAsDate = new Date(); // 날짜 초기화
+                        fetchRecentReceivings(); // 최근 내역 갱신
+                    } else {
+                        const error = await response.json();
+                        throw new Error(error.message || '입고 처리 실패');
+                    }
+                } catch (error) {
+                    console.error('입고 처리 오류:', error);
+                    alert(`오류 발생: ${error.message}`);
+                }
+            });
+
+            // 최근 입고 내역 조회 함수
+            function fetchRecentReceivings() {
+                showLoading('recentReceivingTable');
+                fetch('/.netlify/functions/getRecentReceivings') // 최근 5건 정도 가져오는 함수라 가정
+                    .then(response => response.json())
+                    .then(data => {
+                        recentTableBody.innerHTML = '';
+                        if(data.length === 0) {
+                            showMessage('recentReceivingTable', '최근 입고 내역이 없습니다.');
+                            return;
+                        }
+                        data.forEach(item => {
+                            const row = document.createElement('tr');
+                            row.innerHTML = `
+                                <td>${item.fields['발주번호'] || ''}</td>
+                                <td>${item.fields['품목코드'] || ''}</td>
+                                <td>${item.fields['품명'] || ''}</td>
+                                <td>${item.fields['수량'] || ''}</td>
+                                <td>${item.fields['입고일'] || ''}</td>
+                            `;
+                            recentTableBody.appendChild(row);
+                        });
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        showMessage('recentReceivingTable', '데이터를 불러오는 중 오류가 발생했습니다.');
+                    });
+            }
+
+            // 페이지 로드 시 최근 입고 내역 조회
+            fetchRecentReceivings();
         });
-        async function fetchPurchaseOrders() {
-            const tableBody = document.getElementById('po-table-body');
-            try {
-                const response = await fetch('/.netlify/functions/getPurchaseOrders');
-                if (!response.ok) throw new Error('Network response was not ok');
-                const purchaseOrders = await response.json();
-                tableBody.innerHTML = '';
-                if (purchaseOrders.length === 0) {
-                    tableBody.innerHTML = '<tr><td colspan="7" class="no-data-row">발주 내역이 없습니다.</td></tr>';
-                    return;
-                }
-                purchaseOrders.forEach(po => {
-                    const isReceived = po['상태'] === '입고완료';
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td>${po['발주일자'] || ''}</td>
-                        <td>${po['품명'] || ''}</td>
-                        <td>${(po['발주수량'] || 0).toLocaleString()}</td>
-                        <td>${(po['단가'] || 0).toLocaleString()}원</td>
-                        <td>${(po['공급가액'] || 0).toLocaleString()}원</td>
-                        <td class="${isReceived ? 'status-received' : 'status-pending'}">${po['상태'] || ''}</td>
-                        <td><button class="receive-btn" onclick="receiveStock('${po.id}', this)" ${isReceived ? 'disabled' : ''}>${isReceived ? '처리완료' : '입고완료'}</button></td>
-                    `;
-                    tableBody.appendChild(row);
-                });
-            } catch (error) {
-                console.error('Error fetching purchase orders:', error);
-                tableBody.innerHTML = '<tr><td colspan="7" class="error-row">데이터를 불러오는 데 실패했습니다.</td></tr>';
-            }
-        }
-        async function receiveStock(poId, button) {
-            if (!confirm('해당 품목을 입고 처리하시겠습니까? 재고 수량이 업데이트됩니다.')) return;
-            button.disabled = true;
-            button.textContent = '처리 중...';
-            try {
-                const response = await fetch('/.netlify/functions/updatePOStatus', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ poId: poId })
-                });
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error || 'Failed to update status');
-                }
-                alert('입고 처리가 완료되었습니다.');
-                fetchPurchaseOrders();
-            } catch (error) {
-                console.error('Error receiving stock:', error);
-                alert(`오류가 발생했습니다: ${error.message}`);
-                button.disabled = false;
-                button.textContent = '입고완료';
-            }
-        }
     </script>
 </body>
 </html>
