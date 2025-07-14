@@ -3,9 +3,11 @@ exports.handler = async (event) => {
     const { AIRTABLE_API_KEY, AIRTABLE_BASE_ID } = process.env;
     const TABLE_NAME = '생산계획';
     const url = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(TABLE_NAME)}`;
+
     try {
         const fields = JSON.parse(event.body);
-        const airtableRequest = { records: [{ fields }] };
+        const airtableRequest = { records: [{ fields }] }; // Airtable API가 요구하는 형식
+        
         const response = await fetch(url, {
             method: 'POST',
             headers: {
