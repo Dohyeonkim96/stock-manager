@@ -3,59 +3,138 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>통합관리 시스템</title>
+    <title>재고 관리 시스템 - 출고 승인</title>
     <link rel="stylesheet" href="styles-v2.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        .action-btn {
+            padding: 5px 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-right: 5px;
+        }
+        .btn-confirm { background-color: #28a745; color: white; }
+        .btn-cancel { background-color: #dc3545; color: white; }
+        .btn-confirm:disabled, .btn-cancel:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        .status-requested { color: #ffc107; font-weight: bold; }
+    </style>
 </head>
 <body>
     <div class="container">
-        <nav class="sidebar">
-            <div class="logo">
-                <a href="main.html"><h2>통합관리 시스템</h2></a>
-            </div>
-            <ul class="menu">
-                <li><a href="poStatus.html">발주현황</a></li>
-                <li><a href="stockReceiving.html">입고처리</a></li>
-                <li><a href="inventoryLookup.html">재고현황조회</a></li>
-                <li><a href="productionPlan.html">생산계획관리</a></li>
-                <li><a href="shippingRequest.html">출고요청</a></li>
-                <li><a href="shippingConfirmation.html" class="active">출고확정</a></li>
-                <li><a href="deliveryHistory.html">납품이력</a></li>
-            </ul>
-            <div class="footer">
-                <p>통합관리시스템<br>Copyright 2025.<br>김도현 All rights reserved</p>
-            </div>
-        </nav>
+        <aside class="sidebar" id="sidebar-container">
+            </aside>
         <main class="main-content">
-            <header>
-                <h1>출고 확정</h1>
+            <header class="main-header">
+                <h1>출고 요청 승인</h1>
             </header>
-            <section class="form-section">
-                <h2>출고 정보 입력</h2>
-                <form id="confirmation-form">
-                    <div class="form-group">
-                        <label for="request-number">출하요청번호</label>
-                        <input type="text" id="request-number" name="request-number" placeholder="처리할 출하요청번호를 입력하세요" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="product-code-confirm">품번</label>
-                        <input type="text" id="product-code-confirm" name="product-code-confirm" readonly>
-                    </div>
-                    <div class="form-group">
-                        <label for="product-name-confirm">품명</label>
-                        <input type="text" id="product-name-confirm" name="product-name-confirm" readonly>
-                    </div>
-                    <div class="form-group">
-                        <label for="confirm-quantity">출고수량</label>
-                        <input type="number" id="confirm-quantity" name="confirm-quantity" required>
-                    </div>
-                    <div class="button-group">
-                        <button type="submit" class="btn-primary">출고 확정</button>
-                    </div>
-                </form>
-            </section>
+            
+            <div class="content-box">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>요청일</th>
+                            <th>제품명</th>
+                            <th>요청수량</th>
+                            <th>현재고</th>
+                            <th>거래처</th>
+                            <th>상태</th>
+                            <th>처리</th>
+                        </tr>
+                    </thead>
+                    <tbody id="confirmation-table-body">
+                        <tr><td colspan="7" class="loading-row">로딩 중...</td></tr>
+                    </tbody>
+                </table>
+            </div>
         </main>
     </div>
-    <script src="https://cdn.jsdelivr.net/npm/airtable@0.11.6/build/airtable.browser.js"></script>
+
     <script src="utils-v2.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            loadSidebar('shippingConfirmation.html');
+            loadActionableRequests();
+        });
+
+        async function loadActionableRequests() {
+            const tableBody = document.getElementById('confirmation-table-body');
+            tableBody.innerHTML = '<tr><td colspan="7" class="loading-row">로딩 중...</td></tr>';
+            
+            try {
+                const response = await fetch('/.netlify/functions/getShippingSummary?status=출고요청');
+                if (!response.ok) throw new Error('Network response was not ok');
+
+                const requests = await response.json();
+                tableBody.innerHTML = '';
+
+                if (requests.length === 0) {
+                    tableBody.innerHTML = '<tr><td colspan="7" class="no-data-row">처리할 출고 요청이 없습니다.</td></tr>';
+                    return;
+                }
+                
+                requests.sort((a, b) => new Date(a['출고 요청일']) - new Date(b['출고 요청일']));
+
+                requests.forEach(req => {
+                    const currentStock = req['현재고'] && req['현재고'][0] ? req['현재고'][0] : 0;
+                    const canFulfill = currentStock >= (req['요청수량'] || 0);
+                    const row = `
+                        <tr>
+                            <td>${req['출고 요청일'] || ''}</td>
+                            <td>${req['제품명'] || ''}</td>
+                            <td>${req['요청수량'] || 0}</td>
+                            <td>${currentStock}</td>
+                            <td>${req['거래처명'] || ''}</td>
+                            <td><span class="status-requested">${req['상태']}</span></td>
+                            <td>
+                                <button class="action-btn btn-confirm" onclick="handleAction('${req.id}', 'confirm', this)" ${!canFulfill ? 'disabled' : ''}>승인</button>
+                                <button class="action-btn btn-cancel" onclick="handleAction('${req.id}', 'cancel', this)">취소</button>
+                            </td>
+                        </tr>
+                    `;
+                    tableBody.innerHTML += row;
+                });
+
+            } catch (error) {
+                console.error('Error fetching requests:', error);
+                tableBody.innerHTML = '<tr><td colspan="7" class="error-row">데이터를 불러오는 데 실패했습니다.</td></tr>';
+            }
+        }
+
+        async function handleAction(requestId, action, button) {
+            const actionText = action === 'confirm' ? '승인' : '취소';
+            if (!confirm(`이 요청을 '${actionText}' 처리하시겠습니까?`)) {
+                return;
+            }
+
+            const buttons = button.parentElement.querySelectorAll('button');
+            buttons.forEach(btn => btn.disabled = true);
+
+            try {
+                const response = await fetch('/.netlify/functions/manageShipmentRequest', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ requestId, action })
+                });
+
+                const result = await response.json();
+                if (!response.ok) {
+                    throw new Error(result.error || '처리 중 오류가 발생했습니다.');
+                }
+                
+                alert(`요청이 성공적으로 ${actionText} 처리되었습니다.`);
+                loadActionableRequests(); // Refresh list
+
+            } catch (error) {
+                console.error(`Error processing action ${action}:`, error);
+                alert(`오류: ${error.message}`);
+                buttons.forEach(btn => btn.disabled = false); // Re-enable buttons on error
+            }
+        }
+    </script>
 </body>
 </html>
