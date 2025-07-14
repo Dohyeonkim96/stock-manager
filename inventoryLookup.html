@@ -11,8 +11,11 @@
     <div class="container">
         <aside class="sidebar" id="sidebar"></aside>
         <main class="main-content">
-            <header>
+            <header style="position: relative;">
                 <h1>재고 조회</h1>
+                <div class="header-actions">
+                    <button id="createItemBtn" class="btn btn-primary">품목 추가</button>
+                </div>
             </header>
 
             <div class="search-container card">
@@ -43,6 +46,39 @@
             </div>
         </main>
     </div>
+
+    <div id="itemModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>신규 품목 추가</h2>
+                <button id="closeItemModalBtn" class="close-button">&times;</button>
+            </div>
+            <form id="itemForm">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="itemCode">품목코드</label>
+                        <input type="text" id="itemCode" name="itemCode" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="itemName">품명</label>
+                        <input type="text" id="itemName" name="itemName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="spec">규격</label>
+                        <input type="text" id="spec" name="spec">
+                    </div>
+                    <div class="form-group">
+                        <label for="safetyStock">안전재고</label>
+                        <input type="number" id="safetyStock" name="safetyStock" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">추가</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script src="/utils-v2.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
@@ -52,6 +88,12 @@
             const itemQueryInput = document.getElementById('itemQuery');
             const tableBody = document.querySelector('#inventoryTable tbody');
 
+            const itemModal = document.getElementById('itemModal');
+            const createItemBtn = document.getElementById('createItemBtn');
+            const closeItemModalBtn = document.getElementById('closeItemModalBtn');
+            const itemForm = document.getElementById('itemForm');
+
+            // --- 데이터 조회 기능 ---
             function fetchInventory(query = '') {
                 showLoading('inventoryTable');
                 const url = `/.netlify/functions/getInventoryData?query=${encodeURIComponent(query)}`;
@@ -94,8 +136,47 @@
                     });
             }
 
-            fetchInventory();
+            // --- 모달 관리 기능 ---
+            function openModal() { itemModal.style.display = 'flex'; }
+            function closeModal() {
+                itemModal.style.display = 'none';
+                itemForm.reset();
+            }
 
+            createItemBtn.addEventListener('click', openModal);
+            closeItemModalBtn.addEventListener('click', closeModal);
+            itemModal.addEventListener('click', (event) => {
+                if (event.target === itemModal) closeModal();
+            });
+
+            // --- 신규 품목 추가 폼 제출 ---
+            itemForm.addEventListener('submit', async (event) => {
+                event.preventDefault();
+                const formData = new FormData(itemForm);
+                const itemData = {
+                    '품목코드': formData.get('itemCode'),
+                    '품명': formData.get('itemName'),
+                    '규격': formData.get('spec'),
+                    '안전재고': parseInt(formData.get('safetyStock'), 10),
+                    '현재고': 0 // 신규 품목은 현재고 0으로 시작
+                };
+                
+                try {
+                    const response = await fetch('/.netlify/functions/createItem', {
+                        method: 'POST',
+                        body: JSON.stringify(itemData)
+                    });
+                    if (!response.ok) throw new Error('품목 추가 실패');
+                    alert('신규 품목이 추가되었습니다.');
+                    closeModal();
+                    fetchInventory(); // 목록 새로고침
+                } catch (error) {
+                    alert('오류가 발생했습니다: ' + error.message);
+                }
+            });
+
+            // --- 초기 데이터 로드 및 검색 ---
+            fetchInventory();
             searchForm.addEventListener('submit', function (event) {
                 event.preventDefault();
                 fetchInventory(itemQueryInput.value.trim());
