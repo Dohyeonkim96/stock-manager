@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>발주현황 - 통합 재고관리 시스템</title>
-    <link rel="stylesheet" href="/styles-v2.css"> 
+    <link rel="stylesheet" href="/styles-v2.css">
     <script src="https://kit.fontawesome.com/a2309d579f.js" crossorigin="anonymous"></script>
 </head>
 <body>
@@ -42,10 +42,9 @@
             </div>
         </main>
     </div>
-    <script src="/utils-v2.js"></script> 
+    <script src="/utils-v2.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            // 네비게이션 로드
             loadNavigation('poStatus');
 
             const searchForm = document.getElementById('searchForm');
@@ -87,10 +86,8 @@
                     });
             }
 
-            // 초기 데이터 로드
             fetchPoStatus();
 
-            // 검색 기능
             searchForm.addEventListener('submit', function (event) {
                 event.preventDefault();
                 fetchPoStatus(poNumberInput.value.trim());
