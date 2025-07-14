@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>메인 - 통합 재고관리 시스템</title>
+    <title>대시보드 - 통합 재고관리 시스템</title>
     <link rel="stylesheet" href="/styles-v2.css">
     <script src="https://kit.fontawesome.com/a2309d579f.js" crossorigin="anonymous"></script>
 </head>
@@ -16,22 +16,20 @@
             </header>
             <section class="dashboard">
                 <div class="card">
-                    <h2><i class="fa-solid fa-list-check"></i> 오늘의 할 일</h2>
-                    <ul id="todo-list">
-                        <li>데이터 로딩 중...</li>
-                    </ul>
-                </div>
-                <div class="card">
-                    <h2><i class="fa-solid fa-truck-fast"></i> 발주 현황</h2>
-                    <p id="po-status">데이터 로딩 중...</p>
+                    <h2><i class="fa-solid fa-file-invoice"></i> 발주 현황</h2>
+                    <p id="po-status-summary">총 5건 / 입고완료 3건</p>
                 </div>
                 <div class="card">
                     <h2><i class="fa-solid fa-boxes-stacked"></i> 재고 현황</h2>
-                    <p id="inventory-status">데이터 로딩 중...</p>
+                    <p id="inventory-status-summary">총 100 품목 / 안전재고 이하 5 품목</p>
+                </div>
+                <div class="card">
+                    <h2><i class="fa-solid fa-truck-fast"></i> 출고 현황</h2>
+                    <p id="shipping-status-summary">총 10건 / 출고완료 8건</p>
                 </div>
                 <div class="card">
                     <h2><i class="fa-solid fa-industry"></i> 생산 계획</h2>
-                    <p id="production-plan">데이터 로딩 중...</p>
+                    <p id="production-plan-summary">총 3건 / 생산완료 1건</p>
                 </div>
             </section>
         </main>
@@ -39,41 +37,28 @@
     <script src="/utils-v2.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            loadNavigation('main');
+            // 'main' 페이지가 아니므로 active 표시를 하지 않도록 빈 문자열 전달
+            loadNavigation(''); 
             
-            // 실제 Airtable 함수 이름으로 수정해야 합니다.
-            // 우선은 임시 함수 이름 'getDashboardData'를 사용합니다.
-            fetch('/.netlify/functions/getDashboard-data') // Airtable 함수 이름 확인 필요
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('대시보드 데이터를 가져오는데 실패했습니다. Netlify 함수를 확인하세요.');
-                    }
-                    return response.json();
-                })
+            // 실제 데이터 로직은 주석 처리. 추후 세부 데이터를 받으면 이 부분에 구현합니다.
+            /*
+            fetch('/.netlify/functions/getDashboardSummaries')
+                .then(response => response.json())
                 .then(data => {
-                    const todoList = document.getElementById('todo-list');
-                    todoList.innerHTML = '';
-                    if (data.todos && data.todos.length > 0) {
-                        data.todos.forEach(item => {
-                            const li = document.createElement('li');
-                            li.textContent = item;
-                            todoList.appendChild(li);
-                        });
-                    } else {
-                        todoList.innerHTML = '<li>오늘의 할 일이 없습니다.</li>';
-                    }
-
-                    document.getElementById('po-status').textContent = data.poStatus || '데이터 없음';
-                    document.getElementById('inventory-status').textContent = data.inventoryStatus || '데이터 없음';
-                    document.getElementById('production-plan').textContent = data.productionPlan || '데이터 없음';
+                    document.getElementById('po-status-summary').textContent = data.poStatus;
+                    document.getElementById('inventory-status-summary').textContent = data.inventoryStatus;
+                    document.getElementById('shipping-status-summary').textContent = data.shippingStatus;
+                    document.getElementById('production-plan-summary').textContent = data.productionPlan;
                 })
                 .catch(error => {
-                    console.error(error);
-                    document.getElementById('todo-list').innerHTML = `<li><span style="color:red;">오류 발생</span></li>`;
-                    document.getElementById('po-status').textContent = '데이터 로딩 실패';
-                    document.getElementById('inventory-status').textContent = '데이터 로딩 실패';
-                    document.getElementById('production-plan').textContent = '데이터 로딩 실패';
+                    console.error('대시보드 요약 데이터 로딩 실패:', error);
+                    // 에러 발생 시 각 카드에 실패 메시지 표시
+                    document.getElementById('po-status-summary').textContent = '데이터 로딩 실패';
+                    document.getElementById('inventory-status-summary').textContent = '데이터 로딩 실패';
+                    document.getElementById('shipping-status-summary').textContent = '데이터 로딩 실패';
+                    document.getElementById('production-plan-summary').textContent = '데이터 로딩 실패';
                 });
+            */
         });
     </script>
 </body>
