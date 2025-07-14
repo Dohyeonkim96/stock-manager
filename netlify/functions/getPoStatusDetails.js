@@ -1,16 +1,15 @@
 const Airtable = require('airtable');
 
 const base = new Airtable({ apiKey: process.env.AIRTABLE_API_KEY }).base(process.env.AIRTABLE_BASE_ID);
-const table = base('발주현황');
 
 exports.handler = async (event, context) => {
-    // GET 요청만 처리하도록 명시합니다.
     if (event.httpMethod !== 'GET') {
         return { statusCode: 405, body: 'Method Not Allowed' };
     }
 
     try {
-        const records = await table.select({
+        const table = base('발주현황'); // 1. 테이블 먼저 선택
+        const records = await table.select({ // 2. 선택된 테이블에서 데이터 요청
             sort: [{ field: '발주일자', direction: 'desc' }]
         }).firstPage();
 
