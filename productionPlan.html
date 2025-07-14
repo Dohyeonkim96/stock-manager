@@ -30,8 +30,7 @@
                             <th>상태</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        </tbody>
+                    <tbody></tbody>
                 </table>
             </div>
         </main>
@@ -73,7 +72,6 @@
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             loadNavigation('productionPlan');
-
             const tableBody = document.querySelector('#planTable tbody');
             const planModal = document.getElementById('planModal');
             const createPlanBtn = document.getElementById('createPlanBtn');
@@ -83,17 +81,15 @@
             const itemCodeInput = planForm.querySelector('#itemCode');
             const itemNameInput = planForm.querySelector('#itemName');
 
-            // --- 데이터 조회 기능 ---
+            let selectedItemRecordId = null;
+
             function fetchProductionPlans() {
                 showLoading('planTable');
                 fetch('/.netlify/functions/getProductionPlans')
-                    .then(response => {
-                        if (!response.ok) throw new Error('서버 응답 실패');
-                        return response.json();
-                    })
+                    .then(response => response.json())
                     .then(data => {
                         tableBody.innerHTML = '';
-                        if (data.length === 0) {
+                        if (!data || data.length === 0) {
                             showMessage('planTable', '등록된 생산 계획이 없습니다.');
                             return;
                         }
@@ -101,8 +97,8 @@
                             const row = document.createElement('tr');
                             row.innerHTML = `
                                 <td>${item.fields['생산계획번호'] || ''}</td>
-                                <td>${item.fields['품목코드'] || ''}</td>
-                                <td>${item.fields['품명'] || ''}</td>
+                                <td>${(item.fields['품목코드'] || [''])[0]}</td>
+                                <td>${(item.fields['품명'] || [''])[0]}</td>
                                 <td>${item.fields['계획수량'] || ''}</td>
                                 <td>${item.fields['생산예정일'] || ''}</td>
                                 <td>${item.fields['상태'] || ''}</td>
@@ -111,12 +107,10 @@
                         });
                     })
                     .catch(error => {
-                        console.error('Error:', error);
                         showMessage('planTable', '데이터를 불러오는 중 오류가 발생했습니다.');
                     });
             }
 
-            // --- 모달 관리 기능 ---
             function openModal() {
                 planDateInput.valueAsDate = new Date();
                 planModal.style.display = 'flex';
@@ -124,23 +118,22 @@
             function closeModal() {
                 planModal.style.display = 'none';
                 planForm.reset();
+                selectedItemRecordId = null;
             }
 
             createPlanBtn.addEventListener('click', openModal);
             closePlanModalBtn.addEventListener('click', closeModal);
-            planModal.addEventListener('click', (event) => {
-                if (event.target === planModal) closeModal();
-            });
 
-            // --- 품목코드 입력 시 품명 자동 완성 ---
             itemCodeInput.addEventListener('change', async () => {
                 const itemCode = itemCodeInput.value.trim();
+                selectedItemRecordId = null;
                 if (!itemCode) return;
                 try {
                     const response = await fetch(`/.netlify/functions/getInventoryData?query=${itemCode}`);
                     const data = await response.json();
                     if (data && data.length > 0) {
                         itemNameInput.value = data[0].fields['품명'] || '';
+                        selectedItemRecordId = data[0].id;
                     } else {
                         itemNameInput.value = '해당 품목 없음';
                     }
@@ -149,14 +142,16 @@
                 }
             });
 
-            // --- 생산지시 생성 폼 제출 ---
             planForm.addEventListener('submit', async (event) => {
                 event.preventDefault();
+                if (!selectedItemRecordId) {
+                    alert('유효한 품목코드를 입력하고 선택해주세요.');
+                    return;
+                }
                 const formData = new FormData(planForm);
                 const planData = {
                     '생산예정일': formData.get('planDate'),
-                    '품목코드': formData.get('itemCode'),
-                    '품명': itemNameInput.value,
+                    '품목코드': [selectedItemRecordId],
                     '계획수량': parseInt(formData.get('planQuantity'), 10),
                     '상태': '계획완료'
                 };
@@ -166,7 +161,10 @@
                         method: 'POST',
                         body: JSON.stringify(planData)
                     });
-                    if (!response.ok) throw new Error('생산지시 생성 실패');
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(`생성 실패: ${errorData.message || '알 수 없는 오류'}`);
+                    }
                     alert('생산지시가 성공적으로 생성되었습니다.');
                     closeModal();
                     fetchProductionPlans();
