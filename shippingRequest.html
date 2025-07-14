@@ -3,74 +3,223 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>출고 요청</title>
+    <title>재고 관리 시스템 - 출고 요청</title>
     <link rel="stylesheet" href="styles-v2.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+        .form-group label {
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #333;
+        }
+        .form-group input,
+        .form-group select {
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+        .form-actions {
+            grid-column: span 2;
+            text-align: right;
+        }
+        .submit-btn {
+            background-color: #007bff;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: bold;
+        }
+        .submit-btn:hover {
+            background-color: #0056b3;
+        }
+        .status-requested { color: #ffc107; font-weight: bold; }
+        .status-confirmed { color: #17a2b8; font-weight: bold; }
+        .status-shipped { color: #28a745; font-weight: bold; }
+        .status-cancelled { color: #dc3545; font-weight: bold; }
+    </style>
 </head>
 <body>
     <div class="container">
-        <header>
-            <div class="logo">유한회사 세림</div>
-            <nav>
-                <a href="main.html">홈</a>
-                <a href="poStatus.html">발주현황</a>
-                <a href="inventoryLookup.html">재고조회</a>
-                <a href="shippingRequest.html" class="active">출고요청</a>
-                <a href="deliveryHistory.html">납품이력</a>
-            </nav>
-            <div class="user-info"></div>
-        </header>
-
-        <main>
-            <div class="content-header">
-                <h1>출고 요청</h1>
-                <div id="current-date" class="current-date"></div>
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>재고 관리 시스템</h2>
             </div>
+            <nav class="sidebar-nav">
+                <ul>
+                    <li><a href="main.html"><i class="fas fa-home"></i> 홈</a></li>
+                    <li><a href="stockReceiving.html"><i class="fas fa-box-open"></i> 입고 관리</a></li>
+                    <li class="active"><a href="shippingRequest.html"><i class="fas fa-truck-loading"></i> 출고 요청</a></li>
+                    <li><a href="inventoryLookup.html"><i class="fas fa-search"></i> 재고 조회</a></li>
+                    <li><a href="poStatus.html"><i class="fas fa-file-invoice"></i> 발주 현황</a></li>
+                    <li><a href="productionPlan.html"><i class="fas fa-cogs"></i> 생산 계획</a></li>
+                    <li><a href="deliveryHistory.html"><i class="fas fa-history"></i> 납품 이력</a></li>
+                </ul>
+            </nav>
+        </aside>
 
-            <div class="request-form-container">
-                <h3>출고 요청서 작성</h3>
-                <form id="shipping-request-form">
+        <main class="main-content">
+            <header class="main-header">
+                <h1>출고 요청</h1>
+            </header>
+
+            <div class="content-box">
+                <h3>신규 출고 요청</h3>
+                <form id="shipping-request-form" class="form-grid">
                     <div class="form-group">
-                        <label for="item-code">품목코드</label>
-                        <input type="text" id="item-code" name="item-code" required>
+                        <label for="product-name">제품명</label>
+                        <select id="product-name" name="productName" required>
+                            <option value="">제품을 선택하세요</option>
+                        </select>
                     </div>
                     <div class="form-group">
-                        <label for="item-name">품명</label>
-                        <input type="text" id="item-name" name="item-name" readonly>
+                        <label for="quantity">요청 수량</label>
+                        <input type="number" id="quantity" name="quantity" min="1" required>
                     </div>
                     <div class="form-group">
-                        <label for="quantity">요청수량</label>
-                        <input type="number" id="quantity" name="quantity" required>
+                        <label for="shipping-date">출고 요청일</label>
+                        <input type="date" id="shipping-date" name="shippingDate" required>
                     </div>
                     <div class="form-group">
-                        <label for="request-date">요청일자</label>
-                        <input type="date" id="request-date" name="request-date" required>
+                        <label for="client-name">거래처명</label>
+                        <input type="text" id="client-name" name="clientName" required>
                     </div>
-                    <button type="submit" class="btn">요청</button>
+                     <div class="form-group">
+                        <label for="site-name">현장명</label>
+                        <input type="text" id="site-name" name="siteName">
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="submit-btn">요청 제출</button>
+                    </div>
                 </form>
             </div>
 
-            <div class="table-container" style="margin-top: 20px;">
-                <h3>금일 출고 요청 현황</h3>
-                <table>
+            <div class="content-box">
+                <h3>출고 요청 현황</h3>
+                <table class="data-table">
                     <thead>
                         <tr>
-                            <th>요청시간</th>
-                            <th>품목코드</th>
-                            <th>품명</th>
+                            <th>요청일</th>
+                            <th>제품명</th>
                             <th>요청수량</th>
+                            <th>거래처</th>
+                            <th>현장명</th>
                             <th>상태</th>
                         </tr>
                     </thead>
-                    <tbody id="today-requests-body">
-                        </tbody>
+                    <tbody id="request-list-body">
+                        <tr><td colspan="6" class="loading-row">로딩 중...</td></tr>
+                    </tbody>
                 </table>
             </div>
         </main>
     </div>
 
-    <script src="utils-v2.js"></script>
     <script>
-        // Placeholder for shipping request logic
-    </script>
-</body>
-</html>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Set default shipping date to today
+            document.getElementById('shipping-date').valueAsDate = new Date();
+            
+            loadInitialData();
+
+            document.getElementById('shipping-request-form').addEventListener('submit', submitRequest);
+        });
+
+        async function loadInitialData() {
+            await loadProductList();
+            await loadShippingRequests();
+        }
+
+        async function loadProductList() {
+            const productSelect = document.getElementById('product-name');
+            try {
+                // '기본정보' 테이블에서 제품 목록을 가져옵니다.
+                const response = await fetch('/.netlify/functions/getProductInfo'); 
+                if (!response.ok) throw new Error('제품 목록 로딩 실패');
+                
+                const products = await response.json();
+                productSelect.innerHTML = '<option value="">제품을 선택하세요</option>'; // Clear existing options
+                products.forEach(product => {
+                    const option = `<option value="${product['제품명']}">${product['제품명']}</option>`;
+                    productSelect.innerHTML += option;
+                });
+            } catch (error) {
+                console.error('Error fetching products:', error);
+                productSelect.innerHTML = '<option value="">제품을 불러올 수 없습니다</option>';
+            }
+        }
+
+        async function loadShippingRequests() {
+            const tableBody = document.getElementById('request-list-body');
+            tableBody.innerHTML = '<tr><td colspan="6" class="loading-row">로딩 중...</td></tr>';
+            try {
+                const response = await fetch('/.netlify/functions/getShippingSummary');
+                if (!response.ok) throw new Error('Network response was not ok');
+
+                const requests = await response.json();
+                tableBody.innerHTML = '';
+
+                if (requests.length === 0) {
+                    tableBody.innerHTML = '<tr><td colspan="6" class="no-data-row">출고 요청 내역이 없습니다.</td></tr>';
+                    return;
+                }
+                
+                // Sort by date descending
+                requests.sort((a, b) => new Date(b['출고 요청일']) - new Date(a['출고 요청일']));
+
+                requests.forEach(req => {
+                    let statusClass = '';
+                    switch(req['상태']) {
+                        case '출고요청': statusClass = 'status-requested'; break;
+                        case '출고승인': statusClass = 'status-confirmed'; break;
+                        case '출고완료': statusClass = 'status-shipped'; break;
+                        case '요청취소': statusClass = 'status-cancelled'; break;
+                    }
+                    const row = `
+                        <tr>
+                            <td>${req['출고 요청일'] || ''}</td>
+                            <td>${req['제품명'] || ''}</td>
+                            <td>${req['요청수량'] || 0}</td>
+                            <td>${req['거래처명'] || ''}</td>
+                            <td>${req['현장명'] || ''}</td>
+                            <td class="${statusClass}">${req['상태'] || ''}</td>
+                        </tr>
+                    `;
+                    tableBody.innerHTML += row;
+                });
+
+            } catch (error) {
+                console.error('Error fetching shipping requests:', error);
+                tableBody.innerHTML = '<tr><td colspan="6" class="error-row">데이터를 불러오는 데 실패했습니다.</td></tr>';
+            }
+        }
+
+        async function submitRequest(event) {
+            event.preventDefault();
+            const form = event.target;
+            const submitButton = form.querySelector('button[type="submit"]');
+            submitButton.disabled = true;
+            submitButton.textContent = '제출 중...';
+
+            const formData = {
+                productName: form.productName.value,
+                quantity: parseInt(form.quantity.value, 10),
+                shippingDate: form.shippingDate.value,
+                clientName: form.clientName.value,
+                siteName: form.siteName.value,
+            };
+
+            try {
+                const response
