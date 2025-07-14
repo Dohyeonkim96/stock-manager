@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>납품이력 - 통합 재고관리 시스템</title>
-    <link rel="stylesheet" href="styles-v2.css">
+    <link rel="stylesheet" href="/styles-v2.css">
     <script src="https://kit.fontawesome.com/a2309d579f.js" crossorigin="anonymous"></script>
 </head>
 <body>
@@ -51,10 +51,9 @@
         </main>
     </div>
 
-    <script src="utils-v2.js"></script>
+    <script src="/utils-v2.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            // 네비게이션 로드
             loadNavigation('deliveryHistory');
 
             const searchForm = document.getElementById('searchForm');
@@ -62,15 +61,11 @@
             const endDateInput = document.getElementById('endDate');
             const startDateInput = document.getElementById('startDate');
             
-            // 날짜 기본값 설정 (오늘 날짜)
             const today = new Date();
-            endDateInput.valueAsDate = today;
-            // 시작일은 한 달 전으로 설정
+            endDateInput.valueAsDate = new Date(today);
             const monthAgo = new Date(today.setMonth(today.getMonth() - 1));
             startDateInput.valueAsDate = monthAgo;
 
-
-            // 납품 이력 조회 함수
             function fetchHistory(params = {}) {
                 showLoading('historyTable');
 
@@ -103,7 +98,6 @@
                     });
             }
             
-            // 검색 폼 제출 이벤트
             searchForm.addEventListener('submit', (e) => {
                 e.preventDefault();
                 const formData = new FormData(searchForm);
@@ -115,7 +109,6 @@
                 fetchHistory(params);
             });
 
-            // 초기 데이터 로드 (기본 설정된 날짜 기준)
             fetchHistory({
                 startDate: startDateInput.value,
                 endDate: endDateInput.value,
