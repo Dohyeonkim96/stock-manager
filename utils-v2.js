@@ -2,15 +2,14 @@ function loadNavigation(activePage) {
     const sidebar = document.getElementById('sidebar');
     if (!sidebar) return;
 
-    // '메인' 항목을 배열에서 삭제
+    // 요청하신 순서와 메뉴명으로 재정렬
     const menuItems = [
-        { id: 'poStatus', href: 'poStatus.html', icon: 'fa-file-invoice', text: '발주현황' },
-        { id: 'stockReceiving', href: 'stockReceiving.html', icon: 'fa-dolly', text: '입고관리' },
-        { id: 'inventoryLookup', href: 'inventoryLookup.html', icon: 'fa-search', text: '재고조회' },
-        { id: 'shippingRequest', href: 'shippingRequest.html', icon: 'fa-truck-loading', text: '출고요청' },
-        { id: 'shippingConfirmation', href: 'shippingConfirmation.html', icon: 'fa-check-square', text: '출고확정' },
-        { id: 'deliveryHistory', href: 'deliveryHistory.html', icon: 'fa-history', text: '납품이력' },
-        { id: 'productionPlan', href: 'productionPlan.html', icon: 'fa-industry', text: '생산계획' }
+        { id: 'poStatus', href: 'poStatus.html', icon: 'fa-file-invoice', text: '발주 현황' },
+        { id: 'productionPlan', href: 'productionPlan.html', icon: 'fa-industry', text: '생산 계획' },
+        { id: 'stockReceiving', href: 'stockReceiving.html', icon: 'fa-dolly', text: '입고 처리' },
+        { id: 'inventoryLookup', href: 'inventoryLookup.html', icon: 'fa-search', text: '재고 조회' },
+        { id: 'shippingRequest', href: 'shippingRequest.html', icon: 'fa-truck-loading', text: '출고 요청' },
+        { id: 'deliveryHistory', href: 'deliveryHistory.html', icon: 'fa-history', text: '납품이력' }
     ];
 
     const menuHTML = menuItems.map(item => `
