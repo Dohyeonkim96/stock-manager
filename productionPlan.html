@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>생산계획 - 통합 재고관리 시스템</title>
-    <link rel="stylesheet" href="styles-v2.css">
+    <link rel="stylesheet" href="/styles-v2.css">
     <script src="https://kit.fontawesome.com/a2309d579f.js" crossorigin="anonymous"></script>
 </head>
 <body>
@@ -57,10 +57,9 @@
         </main>
     </div>
 
-    <script src="utils-v2.js"></script>
+    <script src="/utils-v2.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            // 네비게이션 로드
             loadNavigation('productionPlan');
 
             const itemCodeInput = document.getElementById('itemCode');
@@ -69,7 +68,6 @@
             const planDateInput = document.getElementById('planDate');
             const planTableBody = document.querySelector('#planTable tbody');
 
-            // 품목코드 입력 시 품명 자동 완성
             itemCodeInput.addEventListener('change', async () => {
                 const itemCode = itemCodeInput.value.trim();
                 if (!itemCode) return;
@@ -90,7 +88,6 @@
                 }
             });
 
-            // 생산 계획 추가 폼 제출
             planForm.addEventListener('submit', async (event) => {
                 event.preventDefault();
                 const planData = {
@@ -110,7 +107,7 @@
                     if (response.ok) {
                         alert('생산 계획이 추가되었습니다.');
                         planForm.reset();
-                        fetchProductionPlans(); // 목록 새로고침
+                        fetchProductionPlans();
                     } else {
                         const error = await response.json();
                         throw new Error(error.message || '생산 계획 추가 실패');
@@ -121,7 +118,6 @@
                 }
             });
 
-            // 생산 계획 목록 조회 함수
             function fetchProductionPlans() {
                 showLoading('planTable');
                 fetch('/.netlify/functions/getProductionPlans')
@@ -151,7 +147,6 @@
                     });
             }
 
-            // 페이지 로드 시 생산 계획 목록 조회
             fetchProductionPlans();
         });
     </script>
