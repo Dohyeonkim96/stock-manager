@@ -3,85 +3,80 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>재고 관리 시스템 - 홈</title>
+    <title>메인 - 통합 재고관리 시스템</title>
     <link rel="stylesheet" href="styles-v2.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://kit.fontawesome.com/a2309d579f.js" crossorigin="anonymous"></script>
 </head>
 <body>
     <div class="container">
-        <aside class="sidebar"></aside>
+        <aside class="sidebar" id="sidebar"></aside>
         <main class="main-content">
-            <header class="main-header">
-                <h1>홈 대시보드</h1>
+            <header>
+                <h1>대시보드</h1>
             </header>
-            <div id="loader">로딩 중...</div>
-            <section id="dashboard-content" class="dashboard-grid" style="display: none;">
-                <div class="dashboard-card">
-                    <h3>금일 출고 현황</h3>
-                    <div class="status-group">
-                        <div class="status-item"><span class="label">출고 완료</span><span id="shipped-count" class="count">0</span></div>
-                        <div class="status-item"><span class="label">미승인</span><span id="unapproved-count" class="count">0</span></div>
-                    </div>
+            <section class="dashboard">
+                <div class="card">
+                    <h2><i class="fa-solid fa-list-check"></i> 오늘의 할 일</h2>
+                    <ul id="todo-list">
+                        </ul>
                 </div>
-                <div class="dashboard-card">
-                    <h3>발주 현황</h3>
-                     <div class="status-group">
-                        <div class="status-item"><span class="label">입고완료</span><span id="received-po-count" class="count">0</span></div>
-                        <div class="status-item"><span class="label">입고예정</span><span id="pending-po-count" class="count">0</span></div>
-                    </div>
+                <div class="card">
+                    <h2><i class="fa-solid fa-truck-fast"></i> 발주 현황</h2>
+                    <p id="po-status">
+                        </p>
                 </div>
-                <div class="dashboard-card full-width">
-                    <h3>주간 생산 계획</h3>
-                    <table class="dashboard-table">
-                        <thead><tr><th>제품명</th><th>계획수량</th><th>생산수량</th></tr></thead>
-                        <tbody id="production-plan-body"></tbody>
-                    </table>
+                <div class="card">
+                    <h2><i class="fa-solid fa-boxes-stacked"></i> 재고 현황</h2>
+                    <p id="inventory-status">
+                        </p>
                 </div>
-                <div class="dashboard-card full-width">
-                    <h3>주간 출고 계획</h3>
-                    <table class="dashboard-table">
-                        <thead><tr><th>제품명</th><th>요청수량</th><th>출고수량</th></tr></thead>
-                        <tbody id="shipping-plan-body"></tbody>
-                    </table>
+                <div class="card">
+                    <h2><i class="fa-solid fa-industry"></i> 생산 계획</h2>
+                    <p id="production-plan">
+                        </p>
                 </div>
             </section>
         </main>
     </div>
     <script src="utils-v2.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', async () => {
-            loadSidebar('main.html');
-            const loader = document.getElementById('loader');
-            const dashboardContent = document.getElementById('dashboard-content');
-            try {
-                const response = await fetch('/.netlify/functions/getDashboardData');
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                const data = await response.json();
-                document.getElementById('shipped-count').textContent = data.shippingStatus.shipped;
-                document.getElementById('unapproved-count').textContent = data.shippingStatus.pending;
-                document.getElementById('received-po-count').textContent = data.poStatus.received;
-                document.getElementById('pending-po-count').textContent = data.poStatus.pending;
-                const renderTable = (tbodyId, data, columns) => {
-                    const tbody = document.getElementById(tbodyId);
-                    tbody.innerHTML = '';
-                    if (data.length > 0) {
-                        data.forEach(item => {
-                            const row = document.createElement('tr');
-                            row.innerHTML = columns.map(col => `<td>${item[col.field] || col.default}</td>`).join('');
-                            tbody.appendChild(row);
+        document.addEventListener('DOMContentLoaded', function () {
+            // 네비게이션 로드
+            loadNavigation('main');
+
+            // 대시보드 데이터 로드
+            fetch('/.netlify/functions/getDashboardData')
+                .then(response => response.json())
+                .then(data => {
+                    // 오늘의 할 일
+                    const todoList = document.getElementById('todo-list');
+                    todoList.innerHTML = '';
+                    if (data.todos && data.todos.length > 0) {
+                        data.todos.forEach(item => {
+                            const li = document.createElement('li');
+                            li.textContent = item;
+                            todoList.appendChild(li);
                         });
                     } else {
-                        tbody.innerHTML = `<tr><td colspan="${columns.length}" style="text-align:center;">데이터가 없습니다.</td></tr>`;
+                        todoList.innerHTML = '<li>오늘의 할 일이 없습니다.</li>';
                     }
-                };
-                renderTable('production-plan-body', data.weeklyProduction, [{field: '제품명', default: 'N/A'}, {field: '계획수량', default: 0}, {field: '생산수량', default: 0}]);
-                renderTable('shipping-plan-body', data.weeklyShipping, [{field: '제품명', default: 'N/A'}, {field: '요청수량', default: 0}, {field: '출고수량', default: 0}]);
-                loader.style.display = 'none';
-                dashboardContent.style.display = 'grid';
-            } catch (error) {
-                console.error('Failed to load dashboard data:', error);
-                loader.textContent = '데이터를 불러오는 데 실패했습니다.';
-            }
+
+                    // 발주 현황
+                    document.getElementById('po-status').textContent = data.poStatus || '데이터 없음';
+
+                    // 재고 현황
+                    document.getElementById('inventory-status').textContent = data.inventoryStatus || '데이터 없음';
+
+                    // 생산 계획
+                    document.getElementById('production-plan').textContent = data.productionPlan || '데이터 없음';
+                })
+                .catch(error => {
+                    console.error('대시보드 데이터 로딩 실패:', error);
+                    document.getElementById('todo-list').innerHTML = '<li>데이터 로딩 실패</li>';
+                    document.getElementById('po-status').textContent = '데이터 로딩 실패';
+                    document.getElementById('inventory-status').textContent = '데이터 로딩 실패';
+                    document.getElementById('production-plan').textContent = '데이터 로딩 실패';
+                });
         });
     </script>
 </body>
