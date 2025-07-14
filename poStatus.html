@@ -27,7 +27,6 @@
                             <th>수량</th>
                             <th>단위</th>
                             <th>발주일자</th>
-                            <th>입고예정일</th>
                             <th>상태</th>
                         </tr>
                     </thead>
@@ -99,11 +98,10 @@
                             row.innerHTML = `
                                 <td>${item.fields['발주번호'] || ''}</td>
                                 <td>${(item.fields['품목코드_조회'] || [''])[0]}</td>
-                                <td>${(item.fields['품명_조회'] || [''])[0]}</td>
+                                <td>${(item.fields['품명'] || [''])[0]}</td>
                                 <td>${item.fields['수량'] || ''}</td>
-                                <td>${item.fields['단위'] || ''}</td>
+                                <td>${(item.fields['단위'] || [''])[0]}</td>
                                 <td>${item.fields['발주일자'] || ''}</td>
-                                <td>${item.fields['입고예정일'] || ''}</td>
                                 <td>${item.fields['상태'] || ''}</td>
                             `;
                             tableBody.appendChild(row);
@@ -129,13 +127,14 @@
             itemCodeInput.addEventListener('change', async () => {
                 const itemCode = itemCodeInput.value.trim();
                 selectedItemRecordId = null;
+                itemNameInput.value = '';
                 if (!itemCode) return;
                 try {
                     const response = await fetch(`/.netlify/functions/getInventoryData?query=${itemCode}`);
                     const data = await response.json();
                     if (data && data.length > 0) {
                         itemNameInput.value = data[0].fields['품명'] || '';
-                        selectedItemRecordId = data[0].id; // 레코드 ID 저장
+                        selectedItemRecordId = data[0].id;
                     } else {
                         itemNameInput.value = '해당 품목 없음';
                     }
@@ -147,13 +146,13 @@
             poForm.addEventListener('submit', async (event) => {
                 event.preventDefault();
                 if (!selectedItemRecordId) {
-                    alert('유효한 품목코드를 입력하고 선택해주세요.');
+                    alert('유효한 품목코드를 입력하고 확인해주세요.');
                     return;
                 }
                 const formData = new FormData(poForm);
                 const poData = {
                     '발주일자': formData.get('poDate'),
-                    '품목코드': [selectedItemRecordId], // 텍스트 대신 레코드 ID 배열 전송
+                    '품목코드': [selectedItemRecordId], // 레코드 ID 배열 전송
                     '수량': parseInt(formData.get('quantity'), 10),
                     '상태': '발주완료'
                 };
