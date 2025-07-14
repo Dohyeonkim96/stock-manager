@@ -3,90 +3,107 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>통합관리 시스템</title>
+    <title>재고 관리 시스템 - 생산 계획</title>
     <link rel="stylesheet" href="styles-v2.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        .status-planned { color: #17a2b8; font-weight: bold; }
+        .status-in-progress { color: #ffc107; font-weight: bold; }
+        .status-completed { color: #28a745; font-weight: bold; }
+    </style>
 </head>
 <body>
     <div class="container">
-        <nav class="sidebar">
-            <div class="logo">
-                <a href="main.html"><h2>통합관리 시스템</h2></a>
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>재고 관리 시스템</h2>
             </div>
-            <ul class="menu">
-                <li><a href="poStatus.html">발주현황</a></li>
-                <li><a href="stockReceiving.html">입고처리</a></li>
-                <li><a href="inventoryLookup.html">재고현황조회</a></li>
-                <li><a href="productionPlan.html" class="active">생산계획관리</a></li>
-                <li><a href="shippingRequest.html">출고요청</a></li>
-                <li><a href="shippingConfirmation.html">출고확정</a></li>
-                <li><a href="deliveryHistory.html">납품이력</a></li>
-            </ul>
-            <div class="footer">
-                <p>통합관리시스템<br>Copyright 2025.<br>김도현 All rights reserved</p>
-            </div>
-        </nav>
+            <nav class="sidebar-nav">
+                <ul>
+                    <li><a href="main.html"><i class="fas fa-home"></i> 홈</a></li>
+                    <li><a href="stockReceiving.html"><i class="fas fa-box-open"></i> 입고 관리</a></li>
+                    <li><a href="shippingRequest.html"><i class="fas fa-truck-loading"></i> 출고 요청</a></li>
+                    <li><a href="inventoryLookup.html"><i class="fas fa-search"></i> 재고 조회</a></li>
+                    <li><a href="poStatus.html"><i class="fas fa-file-invoice"></i> 발주 현황</a></li>
+                    <li class="active"><a href="productionPlan.html"><i class="fas fa-cogs"></i> 생산 계획</a></li>
+                    <li><a href="deliveryHistory.html"><i class="fas fa-history"></i> 납품 이력</a></li>
+                </ul>
+            </nav>
+        </aside>
         <main class="main-content">
-            <header>
-                <h1>생산 계획 관리</h1>
+            <header class="main-header">
+                <h1>생산 계획 조회</h1>
             </header>
             
-            <section class="form-section">
-                <h2>새 계획 입력</h2>
-                <form id="plan-form">
-                    <div class="form-group">
-                        <label for="product-code">품번</label>
-                        <select id="product-code" name="product-code" required>
-                            </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="plan-date">계획일자</label>
-                        <input type="date" id="plan-date" name="plan-date" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="plan-quantity">계획수량</label>
-                        <input type="number" id="plan-quantity" name="plan-quantity" required min="1">
-                    </div>
-                    <div class="button-group">
-                        <button type="submit" class="btn-primary">계획 제출</button>
-                    </div>
-                </form>
-            </section>
-
-            <section class="table-container">
-                <h2>월간 생산 계획</h2>
-                <table>
+            <div class="content-box">
+                <table class="data-table">
                     <thead>
                         <tr>
-                            <th>계획일자</th>
-                            <th>품번</th>
-                            <th>품명</th>
+                            <th>계획일</th>
+                            <th>제품명</th>
                             <th>계획수량</th>
-                            <th>생산여부</th>
+                            <th>생산수량</th>
+                            <th>달성률</th>
+                            <th>상태</th>
                         </tr>
                     </thead>
                     <tbody id="plan-table-body">
-                        </tbody>
+                        <tr><td colspan="6" class="loading-row">로딩 중...</td></tr>
+                    </tbody>
                 </table>
-            </section>
+            </div>
         </main>
     </div>
 
-    <div id="plan-details-modal" class="modal">
-        <div class="modal-content">
-            <span class="close-button">&times;</span>
-            <h2>생산 계획 상세</h2>
-            <div id="modal-body-plan">
-                </div>
-            <div class="button-group">
-                 <button id="edit-plan-btn" class="btn-primary">수정</button>
-                 <button id="delete-plan-btn" class="btn-danger">삭제</button>
-                 <button id="save-plan-btn" class="btn-primary" style="display:none;">저장</button>
-                 <button id="cancel-edit-btn" class="btn-secondary" style="display:none;">취소</button>
-            </div>
-        </div>
-    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchProductionPlans();
+        });
 
-    <script src="https://cdn.jsdelivr.net/npm/airtable@0.11.6/build/airtable.browser.js"></script>
-    <script src="utils-v2.js"></script>
+        async function fetchProductionPlans() {
+            const tableBody = document.getElementById('plan-table-body');
+            try {
+                const response = await fetch('/.netlify/functions/getProductionPlans');
+                if (!response.ok) throw new Error('Network response was not ok');
+                
+                const plans = await response.json();
+                tableBody.innerHTML = '';
+
+                if (plans.length === 0) {
+                    tableBody.innerHTML = '<tr><td colspan="6" class="no-data-row">생산 계획 데이터가 없습니다.</td></tr>';
+                    return;
+                }
+
+                plans.forEach(plan => {
+                    const plannedQty = plan['계획수량'] || 0;
+                    const producedQty = plan['생산수량'] || 0;
+                    const achievementRate = plannedQty > 0 ? ((producedQty / plannedQty) * 100).toFixed(1) : 0;
+
+                    let statusClass = '';
+                    switch(plan['상태']) {
+                        case '생산예정': statusClass = 'status-planned'; break;
+                        case '생산중': statusClass = 'status-in-progress'; break;
+                        case '생산완료': statusClass = 'status-completed'; break;
+                        default: statusClass = '';
+                    }
+
+                    const row = `
+                        <tr>
+                            <td>${plan['계획일'] || ''}</td>
+                            <td>${plan['제품명'] || ''}</td>
+                            <td>${plannedQty.toLocaleString()}</td>
+                            <td>${producedQty.toLocaleString()}</td>
+                            <td>${achievementRate}%</td>
+                            <td class="${statusClass}">${plan['상태'] || ''}</td>
+                        </tr>
+                    `;
+                    tableBody.innerHTML += row;
+                });
+            } catch (error) {
+                console.error('Error fetching production plans:', error);
+                tableBody.innerHTML = '<tr><td colspan="6" class="error-row">데이터를 불러오는 데 실패했습니다.</td></tr>';
+            }
+        }
+    </script>
 </body>
 </html>
