@@ -6,14 +6,11 @@ exports.handler = async (event) => {
 
     try {
         const fields = JSON.parse(event.body);
-        const airtableRequest = { records: [{ fields }] }; // Airtable이 요구하는 정확한 형식
+        const airtableRequest = { records: [{ fields }] };
         
         const response = await fetch(url, {
             method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${AIRTABLE_API_KEY}`,
-                'Content-Type': 'application/json'
-            },
+            headers: { 'Authorization': `Bearer ${AIRTABLE_API_KEY}`, 'Content-Type': 'application/json' },
             body: JSON.stringify(airtableRequest)
         });
         if (!response.ok) throw new Error(`Airtable 응답 실패: ${response.status}`);
