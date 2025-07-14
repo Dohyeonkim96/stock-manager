@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>입고관리 - 통합 재고관리 시스템</title>
+    <title>입고 처리 - 통합 재고관리 시스템</title>
     <link rel="stylesheet" href="/styles-v2.css">
     <script src="https://kit.fontawesome.com/a2309d579f.js" crossorigin="anonymous"></script>
 </head>
@@ -12,14 +12,14 @@
         <aside class="sidebar" id="sidebar"></aside>
         <main class="main-content">
             <header>
-                <h1>입고 관리</h1>
+                <h1>입고 처리</h1>
             </header>
 
             <div class="form-container card">
                 <form id="receivingForm">
                     <div class="form-group">
                         <label for="poNumber">발주번호</label>
-                        <input type="text" id="poNumber" required>
+                        <input type="text" id="poNumber" required placeholder="발주번호 입력 후 엔터 또는 Tab">
                     </div>
                     <div class="form-group">
                         <label for="itemCode">품목코드</label>
@@ -40,23 +40,6 @@
                     <button type="submit" class="btn btn-primary">입고 처리</button>
                 </form>
             </div>
-
-             <div class="table-container card">
-                <h2>최근 입고 내역</h2>
-                <table id="recentReceivingTable">
-                    <thead>
-                        <tr>
-                            <th>발주번호</th>
-                            <th>품목코드</th>
-                            <th>품명</th>
-                            <th>수량</th>
-                            <th>입고일</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        </tbody>
-                </table>
-            </div>
         </main>
     </div>
     <script src="/utils-v2.js"></script>
@@ -69,26 +52,28 @@
             const itemNameInput = document.getElementById('itemName');
             const receivingForm = document.getElementById('receivingForm');
             const receivingDateInput = document.getElementById('receivingDate');
-            const recentTableBody = document.querySelector('#recentReceivingTable tbody');
 
             receivingDateInput.valueAsDate = new Date();
 
-            poNumberInput.addEventListener('blur', async () => {
+            poNumberInput.addEventListener('change', async () => {
                 const poNumber = poNumberInput.value.trim();
                 if (!poNumber) return;
-
                 try {
+                    // 발주번호로 조회하는 별도의 서버 기능이 필요합니다.
+                    // 우선은 getPoStatusDetails를 사용하지만, 필터 기능이 추가되어야 합니다.
                     const response = await fetch(`/.netlify/functions/getPoStatusDetails?poNumber=${poNumber}`);
                     const data = await response.json();
                     
                     if (data && data.length > 0) {
-                        const item = data[0].fields;
-                        itemCodeInput.value = item['품목코드'] || '';
-                        itemNameInput.value = item['품명'] || '';
+                        const item = data.find(d => d.fields['발주번호'] === poNumber);
+                        if (item) {
+                            itemCodeInput.value = item.fields['품목코드'] || '';
+                            itemNameInput.value = item.fields['품명'] || '';
+                        } else {
+                             alert('해당 발주번호를 찾을 수 없습니다.');
+                        }
                     } else {
-                        alert('해당 발주번호를 찾을 수 없습니다.');
-                        itemCodeInput.value = '';
-                        itemNameInput.value = '';
+                        alert('발주 데이터를 가져오지 못했습니다.');
                     }
                 } catch (error) {
                     console.error('발주 정보 조회 실패:', error);
@@ -98,66 +83,9 @@
 
             receivingForm.addEventListener('submit', async (event) => {
                 event.preventDefault();
-
-                const receivingData = {
-                    poNumber: poNumberInput.value,
-                    itemCode: itemCodeInput.value,
-                    itemName: itemNameInput.value,
-                    quantity: document.getElementById('quantity').value,
-                    receivingDate: receivingDateInput.value
-                };
-
-                try {
-                    const response = await fetch('/.netlify/functions/createStockReceiving', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(receivingData)
-                    });
-
-                    if (response.ok) {
-                        alert('입고 처리가 완료되었습니다.');
-                        receivingForm.reset();
-                        receivingDateInput.valueAsDate = new Date();
-                        fetchRecentReceivings();
-                    } else {
-                        const error = await response.json();
-                        throw new Error(error.message || '입고 처리 실패');
-                    }
-                } catch (error) {
-                    console.error('입고 처리 오류:', error);
-                    alert(`오류 발생: ${error.message}`);
-                }
+                // 입고 처리 로직 (새로운 서버 기능 `createStockReceiving` 필요)
+                alert('입고 처리 기능은 아직 구현되지 않았습니다.');
             });
-
-            function fetchRecentReceivings() {
-                showLoading('recentReceivingTable');
-                fetch('/.netlify/functions/getRecentReceivings')
-                    .then(response => response.json())
-                    .then(data => {
-                        recentTableBody.innerHTML = '';
-                        if(data.length === 0) {
-                            showMessage('recentReceivingTable', '최근 입고 내역이 없습니다.');
-                            return;
-                        }
-                        data.forEach(item => {
-                            const row = document.createElement('tr');
-                            row.innerHTML = `
-                                <td>${item.fields['발주번호'] || ''}</td>
-                                <td>${item.fields['품목코드'] || ''}</td>
-                                <td>${item.fields['품명'] || ''}</td>
-                                <td>${item.fields['수량'] || ''}</td>
-                                <td>${item.fields['입고일'] || ''}</td>
-                            `;
-                            recentTableBody.appendChild(row);
-                        });
-                    })
-                    .catch(error => {
-                        console.error('Error:', error);
-                        showMessage('recentReceivingTable', '데이터를 불러오는 중 오류가 발생했습니다.');
-                    });
-            }
-
-            fetchRecentReceivings();
         });
     </script>
 </body>
