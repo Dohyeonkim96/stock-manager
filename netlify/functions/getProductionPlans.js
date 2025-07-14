@@ -1,7 +1,7 @@
 const Airtable = require('airtable');
 
 const base = new Airtable({ apiKey: process.env.AIRTABLE_API_KEY }).base(process.env.AIRTABLE_BASE_ID);
-const table = base('생산계획'); // 실제 Airtable 테이블 이름
+const table = base('생산계획'); // '생산계획'은 테이블 이름입니다.
 
 exports.handler = async (event, context) => {
     try {
@@ -22,7 +22,7 @@ exports.handler = async (event, context) => {
         console.error(error);
         return {
             statusCode: 500,
-            body: JSON.stringify({ message: 'Error fetching data from Airtable' }),
+            body: JSON.stringify({ message: 'Error fetching from Airtable: ' + error.message }),
         };
     }
 };
