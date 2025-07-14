@@ -1,12 +1,12 @@
 exports.handler = async (event) => {
     if (event.httpMethod !== 'POST') return { statusCode: 405, body: 'Method Not Allowed' };
     const { AIRTABLE_API_KEY, AIRTABLE_BASE_ID } = process.env;
-    const TABLE_NAME = '발주현황';
+    const TABLE_NAME = '기본정보';
     const url = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(TABLE_NAME)}`;
 
     try {
         const fields = JSON.parse(event.body);
-        const airtableRequest = { records: [{ fields }] };
+        const airtableRequest = { records: [{ fields }] }; // Airtable API가 요구하는 형식
         
         const response = await fetch(url, {
             method: 'POST',
