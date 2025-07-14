@@ -3,61 +3,157 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>재고 관리 시스템 - 생산 계획</title>
+    <title>생산계획 - 통합 재고관리 시스템</title>
     <link rel="stylesheet" href="styles-v2.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://kit.fontawesome.com/a2309d579f.js" crossorigin="anonymous"></script>
 </head>
 <body>
     <div class="container">
-        <aside class="sidebar"></aside>
+        <aside class="sidebar" id="sidebar"></aside>
         <main class="main-content">
-            <header class="main-header"><h1>생산 계획 조회</h1></header>
-            <div class="content-box">
-                <table class="data-table">
-                    <thead><tr><th>계획일</th><th>제품명</th><th>계획수량</th><th>생산수량</th><th>달성률</th><th>상태</th></tr></thead>
-                    <tbody id="plan-table-body"><tr><td colspan="6" class="loading-row">로딩 중...</td></tr></tbody>
+            <header>
+                <h1>생산 계획 관리</h1>
+            </header>
+
+            <div class="form-container card">
+                <form id="planForm">
+                    <div class="form-group">
+                        <label for="itemCode">품목코드</label>
+                        <input type="text" id="itemCode" placeholder="품목코드 입력" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="itemName">품명</label>
+                        <input type="text" id="itemName" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label for="planQuantity">계획수량</label>
+                        <input type="number" id="planQuantity" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="planDate">생산예정일</label>
+                        <input type="date" id="planDate" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">계획 추가</button>
+                </form>
+            </div>
+
+            <div class="table-container card">
+                <h2>생산 계획 목록</h2>
+                <table id="planTable">
+                    <thead>
+                        <tr>
+                            <th>생산계획번호</th>
+                            <th>품목코드</th>
+                            <th>품명</th>
+                            <th>계획수량</th>
+                            <th>생산예정일</th>
+                            <th>상태</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        </tbody>
                 </table>
             </div>
         </main>
     </div>
+
     <script src="utils-v2.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            loadSidebar('productionPlan.html');
+        document.addEventListener('DOMContentLoaded', function () {
+            // 네비게이션 로드
+            loadNavigation('productionPlan');
+
+            const itemCodeInput = document.getElementById('itemCode');
+            const itemNameInput = document.getElementById('itemName');
+            const planForm = document.getElementById('planForm');
+            const planDateInput = document.getElementById('planDate');
+            const planTableBody = document.querySelector('#planTable tbody');
+
+            // 품목코드 입력 시 품명 자동 완성
+            itemCodeInput.addEventListener('change', async () => {
+                const itemCode = itemCodeInput.value.trim();
+                if (!itemCode) return;
+
+                try {
+                    const response = await fetch(`/.netlify/functions/getInventoryData?query=${itemCode}`);
+                    const data = await response.json();
+
+                    if (data && data.length > 0) {
+                        itemNameInput.value = data[0].fields['품명'] || '';
+                    } else {
+                        alert('존재하지 않는 품목코드입니다.');
+                        itemNameInput.value = '';
+                    }
+                } catch (error) {
+                    console.error('품목 정보 조회 실패:', error);
+                    alert('품목 정보를 가져오는 데 실패했습니다.');
+                }
+            });
+
+            // 생산 계획 추가 폼 제출
+            planForm.addEventListener('submit', async (event) => {
+                event.preventDefault();
+                const planData = {
+                    itemCode: itemCodeInput.value,
+                    itemName: itemNameInput.value,
+                    quantity: document.getElementById('planQuantity').value,
+                    planDate: planDateInput.value,
+                };
+
+                try {
+                    const response = await fetch('/.netlify/functions/createProductionPlan', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(planData),
+                    });
+
+                    if (response.ok) {
+                        alert('생산 계획이 추가되었습니다.');
+                        planForm.reset();
+                        fetchProductionPlans(); // 목록 새로고침
+                    } else {
+                        const error = await response.json();
+                        throw new Error(error.message || '생산 계획 추가 실패');
+                    }
+                } catch (error) {
+                    console.error('생산 계획 추가 오류:', error);
+                    alert(`오류 발생: ${error.message}`);
+                }
+            });
+
+            // 생산 계획 목록 조회 함수
+            function fetchProductionPlans() {
+                showLoading('planTable');
+                fetch('/.netlify/functions/getProductionPlans')
+                    .then(response => response.json())
+                    .then(data => {
+                        planTableBody.innerHTML = '';
+                        if (data.length === 0) {
+                            showMessage('planTable', '등록된 생산 계획이 없습니다.');
+                            return;
+                        }
+                        data.forEach(item => {
+                            const row = document.createElement('tr');
+                            row.innerHTML = `
+                                <td>${item.fields['생산계획번호'] || ''}</td>
+                                <td>${item.fields['품목코드'] || ''}</td>
+                                <td>${item.fields['품명'] || ''}</td>
+                                <td>${item.fields['계획수량'] || ''}</td>
+                                <td>${item.fields['생산예정일'] || ''}</td>
+                                <td>${item.fields['상태'] || ''}</td>
+                            `;
+                            planTableBody.appendChild(row);
+                        });
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        showMessage('planTable', '데이터를 불러오는 중 오류가 발생했습니다.');
+                    });
+            }
+
+            // 페이지 로드 시 생산 계획 목록 조회
             fetchProductionPlans();
         });
-        async function fetchProductionPlans() {
-            const tableBody = document.getElementById('plan-table-body');
-            try {
-                const response = await fetch('/.netlify/functions/getProductionPlans');
-                if (!response.ok) throw new Error('Network response was not ok');
-                const plans = await response.json();
-                tableBody.innerHTML = '';
-                if (plans.length === 0) {
-                    tableBody.innerHTML = '<tr><td colspan="6" class="no-data-row">생산 계획 데이터가 없습니다.</td></tr>';
-                    return;
-                }
-                plans.forEach(plan => {
-                    const plannedQty = plan['계획수량'] || 0;
-                    const producedQty = plan['생산수량'] || 0;
-                    const achievementRate = plannedQty > 0 ? ((producedQty / plannedQty) * 100).toFixed(1) : 0;
-                    let statusClass = { '생산예정': 'status-planned', '생산중': 'status-in-progress', '생산완료': 'status-completed' }[plan['상태']] || '';
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td>${plan['계획일'] || ''}</td>
-                        <td>${plan['제품명'] || ''}</td>
-                        <td>${plannedQty.toLocaleString()}</td>
-                        <td>${producedQty.toLocaleString()}</td>
-                        <td>${achievementRate}%</td>
-                        <td class="${statusClass}">${plan['상태'] || ''}</td>
-                    `;
-                    tableBody.appendChild(row);
-                });
-            } catch (error) {
-                console.error('Error fetching production plans:', error);
-                tableBody.innerHTML = '<tr><td colspan="6" class="error-row">데이터를 불러오는 데 실패했습니다.</td></tr>';
-            }
-        }
     </script>
 </body>
 </html>
