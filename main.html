@@ -38,17 +38,14 @@
             </section>
         </main>
     </div>
-    <script src="utils-v2.js"></script>
+    <script src="/utils-v2.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            // 네비게이션 로드
             loadNavigation('main');
-
-            // 대시보드 데이터 로드
+            
             fetch('/.netlify/functions/getDashboardData')
                 .then(response => response.json())
                 .then(data => {
-                    // 오늘의 할 일
                     const todoList = document.getElementById('todo-list');
                     todoList.innerHTML = '';
                     if (data.todos && data.todos.length > 0) {
@@ -61,13 +58,8 @@
                         todoList.innerHTML = '<li>오늘의 할 일이 없습니다.</li>';
                     }
 
-                    // 발주 현황
                     document.getElementById('po-status').textContent = data.poStatus || '데이터 없음';
-
-                    // 재고 현황
                     document.getElementById('inventory-status').textContent = data.inventoryStatus || '데이터 없음';
-
-                    // 생산 계획
                     document.getElementById('production-plan').textContent = data.productionPlan || '데이터 없음';
                 })
                 .catch(error => {
