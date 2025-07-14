@@ -1,10 +1,14 @@
 const Airtable = require('airtable');
 
-// .env 파일이나 Netlify 환경 변수에서 설정값을 가져옵니다.
 const base = new Airtable({ apiKey: process.env.AIRTABLE_API_KEY }).base(process.env.AIRTABLE_BASE_ID);
-const table = base('발주현황'); // '발주현황'은 테이블 이름입니다.
+const table = base('발주현황');
 
 exports.handler = async (event, context) => {
+    // GET 요청만 처리하도록 명시합니다.
+    if (event.httpMethod !== 'GET') {
+        return { statusCode: 405, body: 'Method Not Allowed' };
+    }
+
     try {
         const records = await table.select({
             sort: [{ field: '발주일자', direction: 'desc' }]
@@ -20,10 +24,9 @@ exports.handler = async (event, context) => {
             body: JSON.stringify(data),
         };
     } catch (error) {
-        console.error(error);
         return {
             statusCode: 500,
-            body: JSON.stringify({ message: 'Error fetching from Airtable: ' + error.message }),
+            body: JSON.stringify({ message: 'Airtable 데이터 조회 실패: ' + error.message }),
         };
     }
 };
