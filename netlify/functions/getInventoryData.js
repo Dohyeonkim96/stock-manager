@@ -5,6 +5,7 @@ exports.handler = async (event) => {
 
     if (event.queryStringParameters && event.queryStringParameters.query) {
         const query = event.queryStringParameters.query;
+        // '기본정보' 테이블의 기본 필드인 '품목코드'에서 검색
         const filterFormula = `SEARCH("${query}", {품목코드})`;
         url += `?filterByFormula=${encodeURIComponent(filterFormula)}`;
     }
@@ -13,10 +14,7 @@ exports.handler = async (event) => {
         const response = await fetch(url, { headers: { 'Authorization': `Bearer ${AIRTABLE_API_KEY}` } });
         if (!response.ok) throw new Error(`Airtable 응답 실패: ${response.status}`);
         const data = await response.json();
-        return {
-            statusCode: 200,
-            body: JSON.stringify(data.records)
-        };
+        return { statusCode: 200, body: JSON.stringify(data.records) };
     } catch (error) {
         return { statusCode: 500, body: JSON.stringify({ message: error.message }) };
     }
