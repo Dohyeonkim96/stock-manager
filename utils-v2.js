@@ -1,23 +1,57 @@
-function loadSidebar(activePage) {
-    const sidebarNav = `
+function loadNavigation(activePage) {
+    const sidebar = document.getElementById('sidebar');
+    if (!sidebar) return;
+
+    const menuItems = [
+        { id: 'main', href: 'main.html', icon: 'fa-house', text: '메인' },
+        { id: 'poStatus', href: 'poStatus.html', icon: 'fa-file-invoice', text: '발주현황' },
+        { id: 'stockReceiving', href: 'stockReceiving.html', icon: 'fa-dolly', text: '입고관리' },
+        { id: 'inventoryLookup', href: 'inventoryLookup.html', icon: 'fa-search', text: '재고조회' },
+        { id: 'shippingRequest', href: 'shippingRequest.html', icon: 'fa-truck-loading', text: '출고요청' },
+        { id: 'shippingConfirmation', href: 'shippingConfirmation.html', icon: 'fa-check-square', text: '출고확정' },
+        { id: 'deliveryHistory', href: 'deliveryHistory.html', icon: 'fa-history', text: '납품이력' },
+        { id: 'productionPlan', href: 'productionPlan.html', icon: 'fa-industry', text: '생산계획' }
+    ];
+
+    const menuHTML = menuItems.map(item => `
+        <li>
+            <a href="${item.href}" class="${item.id === activePage ? 'active' : ''}">
+                <i class="fa-solid ${item.icon}"></i>
+                ${item.text}
+            </a>
+        </li>
+    `).join('');
+
+    sidebar.innerHTML = `
         <div class="sidebar-header">
-            <h2>재고 관리 시스템</h2>
+            <h1><a href="main.html">통합재고관리</a></h1>
         </div>
-        <nav class="sidebar-nav">
-            <ul>
-                <li class="${activePage === 'main.html' ? 'active' : ''}"><a href="main.html"><i class="fas fa-home"></i> 홈</a></li>
-                <li class="${activePage === 'stockReceiving.html' ? 'active' : ''}"><a href="stockReceiving.html"><i class="fas fa-box-open"></i> 입고 관리</a></li>
-                <li class="${activePage === 'shippingRequest.html' ? 'active' : ''}"><a href="shippingRequest.html"><i class="fas fa-truck-loading"></i> 출고 요청</a></li>
-                <li class="${activePage === 'shippingConfirmation.html' ? 'active' : ''}"><a href="shippingConfirmation.html"><i class="fas fa-check-circle"></i> 출고 승인</a></li>
-                <li class="${activePage === 'inventoryLookup.html' ? 'active' : ''}"><a href="inventoryLookup.html"><i class="fas fa-search"></i> 재고 조회</a></li>
-                <li class="${activePage === 'poStatus.html' ? 'active' : ''}"><a href="poStatus.html"><i class="fas fa-file-invoice"></i> 발주 현황</a></li>
-                <li class="${activePage === 'productionPlan.html' ? 'active' : ''}"><a href="productionPlan.html"><i class="fas fa-cogs"></i> 생산 계획</a></li>
-                <li class="${activePage === 'deliveryHistory.html' ? 'active' : ''}"><a href="deliveryHistory.html"><i class="fas fa-history"></i> 납품 이력</a></li>
-            </ul>
-        </nav>
+        <ul class="sidebar-menu">
+            ${menuHTML}
+        </ul>
     `;
-    const sidebarContainer = document.querySelector('.sidebar');
-    if (sidebarContainer) {
-        sidebarContainer.innerHTML = sidebarNav;
+}
+
+function showLoading(tableId) {
+    const table = document.getElementById(tableId);
+    if (table) {
+        const tbody = table.querySelector('tbody');
+        if(tbody) {
+            tbody.innerHTML = `<tr><td colspan="${table.querySelector('thead tr').children.length}" id="loading">로딩 중...</td></tr>`;
+        }
     }
 }
+
+function showMessage(tableId, message) {
+    const table = document.getElementById(tableId);
+    if (table) {
+        const tbody = table.querySelector('tbody');
+        if(tbody) {
+            tbody.innerHTML = `<tr><td colspan="${table.querySelector('thead tr').children.length}" id="message">${message}</td></tr>`;
+        }
+    }
+}
+
+// 모든 페이지 로드 시 네비게이션을 자동으로 로드하도록 설정할 수 있습니다.
+// 예시: document.addEventListener('DOMContentLoaded', () => loadNavigation('poStatus'));
+// 각 페이지 HTML 파일의 스크립트에서 호출하는 방식으로 변경합니다.
