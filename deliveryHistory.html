@@ -3,56 +3,125 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>재고 관리 시스템 - 납품 이력</title>
+    <title>납품이력 - 통합 재고관리 시스템</title>
     <link rel="stylesheet" href="styles-v2.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://kit.fontawesome.com/a2309d579f.js" crossorigin="anonymous"></script>
 </head>
 <body>
     <div class="container">
-        <aside class="sidebar"></aside>
+        <aside class="sidebar" id="sidebar"></aside>
         <main class="main-content">
-            <header class="main-header"><h1>납품 이력 조회</h1></header>
-            <div class="content-box">
-                <table class="data-table">
-                    <thead><tr><th>납품일</th><th>거래처명</th><th>현장명</th><th>제품명</th><th>납품수량</th></tr></thead>
-                    <tbody id="history-table-body"><tr><td colspan="5" class="loading-row">로딩 중...</td></tr></tbody>
+            <header>
+                <h1>납품 이력 조회</h1>
+            </header>
+
+            <div class="search-container card">
+                <form id="searchForm" style="display: flex; gap: 15px; align-items: flex-end;">
+                    <div class="form-group" style="flex: 1;">
+                        <label for="startDate">조회 시작일</label>
+                        <input type="date" id="startDate" name="startDate">
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label for="endDate">조회 종료일</label>
+                        <input type="date" id="endDate" name="endDate">
+                    </div>
+                    <div class="form-group" style="flex: 2;">
+                        <label for="query">품목 검색</label>
+                        <input type="text" id="query" name="query" placeholder="품목코드 또는 품명 입력">
+                    </div>
+                    <button type="submit" class="btn btn-primary">조회</button>
+                </form>
+            </div>
+
+            <div class="table-container card">
+                 <table id="historyTable">
+                    <thead>
+                        <tr>
+                            <th>납품일</th>
+                            <th>요청번호</th>
+                            <th>품목코드</th>
+                            <th>품명</th>
+                            <th>수량</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        </tbody>
                 </table>
             </div>
         </main>
     </div>
+
     <script src="utils-v2.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            loadSidebar('deliveryHistory.html');
-            fetchDeliveryHistory();
-        });
-        async function fetchDeliveryHistory() {
-            const tableBody = document.getElementById('history-table-body');
-            try {
-                const response = await fetch('/.netlify/functions/getDeliveryHistory');
-                if (!response.ok) throw new Error('Network response was not ok');
-                const history = await response.json();
-                tableBody.innerHTML = '';
-                if (history.length === 0) {
-                    tableBody.innerHTML = '<tr><td colspan="5" class="no-data-row">납품 이력이 없습니다.</td></tr>';
-                    return;
-                }
-                history.forEach(item => {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td>${item['납품일'] || ''}</td>
-                        <td>${item['거래처명']?.[0] || ''}</td>
-                        <td>${item['현장명']?.[0] || ''}</td>
-                        <td>${item['제품명']?.[0] || ''}</td>
-                        <td>${(item['납품수량'] || 0).toLocaleString()}</td>
-                    `;
-                    tableBody.appendChild(row);
-                });
-            } catch (error) {
-                console.error('Error fetching delivery history:', error);
-                tableBody.innerHTML = '<tr><td colspan="5" class="error-row">데이터를 불러오는 데 실패했습니다.</td></tr>';
+        document.addEventListener('DOMContentLoaded', function () {
+            // 네비게이션 로드
+            loadNavigation('deliveryHistory');
+
+            const searchForm = document.getElementById('searchForm');
+            const tableBody = document.querySelector('#historyTable tbody');
+            const endDateInput = document.getElementById('endDate');
+            const startDateInput = document.getElementById('startDate');
+            
+            // 날짜 기본값 설정 (오늘 날짜)
+            const today = new Date();
+            endDateInput.valueAsDate = today;
+            // 시작일은 한 달 전으로 설정
+            const monthAgo = new Date(today.setMonth(today.getMonth() - 1));
+            startDateInput.valueAsDate = monthAgo;
+
+
+            // 납품 이력 조회 함수
+            function fetchHistory(params = {}) {
+                showLoading('historyTable');
+
+                const query = new URLSearchParams(params).toString();
+                const url = `/.netlify/functions/getDeliveryHistory?${query}`;
+
+                fetch(url)
+                    .then(response => response.json())
+                    .then(data => {
+                        tableBody.innerHTML = '';
+                        if (data.length === 0) {
+                            showMessage('historyTable', '해당 조건의 납품 이력이 없습니다.');
+                            return;
+                        }
+                        data.forEach(item => {
+                            const row = document.createElement('tr');
+                            row.innerHTML = `
+                                <td>${item.fields['납품일'] || ''}</td>
+                                <td>${item.fields['요청번호'] || ''}</td>
+                                <td>${item.fields['품목코드'] || ''}</td>
+                                <td>${item.fields['품명'] || ''}</td>
+                                <td>${item.fields['수량'] || ''}</td>
+                            `;
+                            tableBody.appendChild(row);
+                        });
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        showMessage('historyTable', '데이터를 불러오는 중 오류가 발생했습니다.');
+                    });
             }
-        }
+            
+            // 검색 폼 제출 이벤트
+            searchForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const formData = new FormData(searchForm);
+                const params = {
+                    startDate: formData.get('startDate'),
+                    endDate: formData.get('endDate'),
+                    query: formData.get('query')
+                };
+                fetchHistory(params);
+            });
+
+            // 초기 데이터 로드 (기본 설정된 날짜 기준)
+            fetchHistory({
+                startDate: startDateInput.value,
+                endDate: endDateInput.value,
+                query: ''
+            });
+        });
     </script>
 </body>
 </html>
