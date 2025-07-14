@@ -11,17 +11,12 @@
     <div class="container">
         <aside class="sidebar" id="sidebar"></aside>
         <main class="main-content">
-            <header>
+            <header style="position: relative;">
                 <h1>발주현황 조회</h1>
+                <div class="header-actions">
+                    <button id="createPoBtn" class="btn btn-primary">발주서 생성</button>
+                </div>
             </header>
-            
-            <div class="search-container card">
-                <form id="searchForm" class="form-group">
-                    <label for="poNumber">발주번호로 검색:</label>
-                    <input type="text" id="poNumber" name="poNumber" placeholder="발주번호 입력">
-                    <button type="submit" class="btn btn-primary">검색</button>
-                </form>
-            </div>
 
             <div class="table-container card">
                 <table id="poTable">
@@ -32,6 +27,7 @@
                             <th>품명</th>
                             <th>수량</th>
                             <th>단위</th>
+                            <th>발주일자</th>
                             <th>입고예정일</th>
                             <th>상태</th>
                         </tr>
@@ -42,28 +38,65 @@
             </div>
         </main>
     </div>
+
+    <div id="poModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>발주서 생성</h2>
+                <button id="closePoModalBtn" class="close-button">&times;</button>
+            </div>
+            <form id="poForm">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="poDate">발주일자</label>
+                        <input type="date" id="poDate" name="poDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="itemCode">품목코드</label>
+                        <input type="text" id="itemCode" name="itemCode" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="itemName">품명</label>
+                        <input type="text" id="itemName" name="itemName" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label for="quantity">수량</label>
+                        <input type="number" id="quantity" name="quantity" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">생성</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script src="/utils-v2.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             loadNavigation('poStatus');
 
-            const searchForm = document.getElementById('searchForm');
-            const poNumberInput = document.getElementById('poNumber');
             const tableBody = document.querySelector('#poTable tbody');
+            const poModal = document.getElementById('poModal');
+            const createPoBtn = document.getElementById('createPoBtn');
+            const closePoModalBtn = document.getElementById('closePoModalBtn');
+            const poForm = document.getElementById('poForm');
+            const poDateInput = document.getElementById('poDate');
+            const itemCodeInput = poForm.querySelector('#itemCode');
+            const itemNameInput = poForm.querySelector('#itemName');
 
-            function fetchPoStatus(poNumber = '') {
+            // --- 데이터 조회 기능 ---
+            function fetchPoStatus() {
                 showLoading('poTable');
-                let url = '/.netlify/functions/getPoStatusDetails';
-                if (poNumber) {
-                    url += `?poNumber=${encodeURIComponent(poNumber)}`;
-                }
-
-                fetch(url)
-                    .then(response => response.json())
+                fetch('/.netlify/functions/getPoStatusDetails')
+                    .then(response => {
+                        if (!response.ok) throw new Error('서버 응답 실패');
+                        return response.json();
+                    })
                     .then(data => {
                         tableBody.innerHTML = '';
                         if (data.length === 0) {
-                            showMessage('poTable', '해당하는 발주 데이터가 없습니다.');
+                            showMessage('poTable', '표시할 발주 데이터가 없습니다.');
                             return;
                         }
                         data.forEach(item => {
@@ -74,6 +107,7 @@
                                 <td>${item.fields['품명'] || ''}</td>
                                 <td>${item.fields['수량'] || ''}</td>
                                 <td>${item.fields['단위'] || ''}</td>
+                                <td>${item.fields['발주일자'] || ''}</td>
                                 <td>${item.fields['입고예정일'] || ''}</td>
                                 <td>${item.fields['상태'] || ''}</td>
                             `;
@@ -86,12 +120,72 @@
                     });
             }
 
-            fetchPoStatus();
+            // --- 모달 관리 기능 ---
+            function openModal() {
+                poDateInput.valueAsDate = new Date(); // 오늘 날짜 기본값
+                poModal.style.display = 'flex';
+            }
 
-            searchForm.addEventListener('submit', function (event) {
-                event.preventDefault();
-                fetchPoStatus(poNumberInput.value.trim());
+            function closeModal() {
+                poModal.style.display = 'none';
+                poForm.reset();
+            }
+
+            createPoBtn.addEventListener('click', openModal);
+            closePoModalBtn.addEventListener('click', closeModal);
+            poModal.addEventListener('click', (event) => {
+                if (event.target === poModal) closeModal();
             });
+
+            // --- 품목코드 입력 시 품명 자동 완성 ---
+            itemCodeInput.addEventListener('change', async () => {
+                const itemCode = itemCodeInput.value.trim();
+                if (!itemCode) return;
+                try {
+                    // 품목 정보를 가져오는 함수 (예: getInventoryData)
+                    const response = await fetch(`/.netlify/functions/getInventoryData?query=${itemCode}`);
+                    const data = await response.json();
+                    if (data && data.length > 0) {
+                        itemNameInput.value = data[0].fields['품명'] || '';
+                    } else {
+                        itemNameInput.value = '해당 품목 없음';
+                    }
+                } catch (error) {
+                    console.error('품목 정보 조회 실패:', error);
+                    itemNameInput.value = '조회 실패';
+                }
+            });
+
+            // --- 발주서 생성 폼 제출 ---
+            poForm.addEventListener('submit', async (event) => {
+                event.preventDefault();
+                const formData = new FormData(poForm);
+                const poData = {
+                    '발주일자': formData.get('poDate'),
+                    '품목코드': formData.get('itemCode'),
+                    '품명': itemNameInput.value,
+                    '수량': parseInt(formData.get('quantity'), 10),
+                    // 기본값 설정
+                    '상태': '발주완료'
+                };
+                
+                try {
+                    const response = await fetch('/.netlify/functions/createPurchaseOrder', {
+                        method: 'POST',
+                        body: JSON.stringify(poData)
+                    });
+                    if (!response.ok) throw new Error('발주서 생성 실패');
+                    alert('발주서가 성공적으로 생성되었습니다.');
+                    closeModal();
+                    fetchPoStatus(); // 목록 새로고침
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('오류가 발생했습니다: ' + error.message);
+                }
+            });
+
+            // --- 초기 데이터 로드 ---
+            fetchPoStatus();
         });
     </script>
 </body>
