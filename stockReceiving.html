@@ -59,10 +59,9 @@
             </div>
         </main>
     </div>
-    <script src="utils-v2.js"></script>
+    <script src="/utils-v2.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            // 네비게이션 로드
             loadNavigation('stockReceiving');
 
             const poNumberInput = document.getElementById('poNumber');
@@ -72,10 +71,8 @@
             const receivingDateInput = document.getElementById('receivingDate');
             const recentTableBody = document.querySelector('#recentReceivingTable tbody');
 
-            // 오늘 날짜를 기본값으로 설정
             receivingDateInput.valueAsDate = new Date();
 
-            // 발주번호 입력 시 발주 정보 자동 완성
             poNumberInput.addEventListener('blur', async () => {
                 const poNumber = poNumberInput.value.trim();
                 if (!poNumber) return;
@@ -99,7 +96,6 @@
                 }
             });
 
-            // 입고 처리 폼 제출
             receivingForm.addEventListener('submit', async (event) => {
                 event.preventDefault();
 
@@ -121,8 +117,8 @@
                     if (response.ok) {
                         alert('입고 처리가 완료되었습니다.');
                         receivingForm.reset();
-                        receivingDateInput.valueAsDate = new Date(); // 날짜 초기화
-                        fetchRecentReceivings(); // 최근 내역 갱신
+                        receivingDateInput.valueAsDate = new Date();
+                        fetchRecentReceivings();
                     } else {
                         const error = await response.json();
                         throw new Error(error.message || '입고 처리 실패');
@@ -133,10 +129,9 @@
                 }
             });
 
-            // 최근 입고 내역 조회 함수
             function fetchRecentReceivings() {
                 showLoading('recentReceivingTable');
-                fetch('/.netlify/functions/getRecentReceivings') // 최근 5건 정도 가져오는 함수라 가정
+                fetch('/.netlify/functions/getRecentReceivings')
                     .then(response => response.json())
                     .then(data => {
                         recentTableBody.innerHTML = '';
@@ -162,7 +157,6 @@
                     });
             }
 
-            // 페이지 로드 시 최근 입고 내역 조회
             fetchRecentReceivings();
         });
     </script>
