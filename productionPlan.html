@@ -50,11 +50,11 @@
                     </div>
                     <div class="form-group">
                         <label for="itemCode">품목코드</label>
-                        <input type="text" id="itemCode" name="itemCode" required>
+                        <input type="text" id="itemCode" name="itemCode" placeholder="코드 입력 후 Tab 또는 Enter" required>
                     </div>
                     <div class="form-group">
                         <label for="itemName">품명</label>
-                        <input type="text" id="itemName" name="itemName" readonly>
+                        <input type="text" id="itemName" name="itemName" readonly style="background-color: #e9ecef;">
                     </div>
                     <div class="form-group">
                         <label for="planQuantity">계획수량</label>
@@ -107,6 +107,7 @@
                         });
                     })
                     .catch(error => {
+                        console.error(error);
                         showMessage('planTable', '데이터를 불러오는 중 오류가 발생했습니다.');
                     });
             }
@@ -132,9 +133,9 @@
                 try {
                     const response = await fetch(`/.netlify/functions/getInventoryData?query=${itemCode}`);
                     const data = await response.json();
-                    if (data && data.length > 0) {
+                    if (data && data.length > 0 && data[0].fields['품목코드'] === itemCode) {
                         itemNameInput.value = data[0].fields['품명'] || '';
-                        selectedItemRecordId = data[0].id;
+                        selectedItemRecordId = data[0].id; // 레코드 ID 저장
                     } else {
                         itemNameInput.value = '해당 품목 없음';
                     }
@@ -150,9 +151,10 @@
                     return;
                 }
                 const formData = new FormData(planForm);
+                // Airtable에 보낼 데이터: 조회(Lookup) 필드인 '품명'은 제외
                 const planData = {
                     '생산예정일': formData.get('planDate'),
-                    '품목코드': [selectedItemRecordId],
+                    '품목코드': [selectedItemRecordId], // 레코드 ID 배열 전송
                     '계획수량': parseInt(formData.get('planQuantity'), 10),
                     '상태': '계획완료'
                 };
